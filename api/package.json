@@ -4,6 +4,7 @@
   "main": "src/index.js",
   "dependencies": {
     "@azure/functions": "^4.5.0",
-    "@azure/cosmos": "^4.2.0"
+    "@azure/cosmos": "^4.2.0",
+    "@azure/storage-blob": "^12.25.0"
   }
 }

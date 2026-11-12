@@ -72,12 +72,13 @@ module.exports = {
   async get(id) {
     return store.get(id);
   },
-  async create({ title, body, author }) {
+  async create({ title, body, author, imageUrl }) {
     const post = {
       id: String(Date.now()) + Math.random().toString(16).slice(2, 6),
       title: String(title || "").trim(),
       body: String(body || "").trim(),
       author: String(author || "Amir").trim(),
+      imageUrl: typeof imageUrl === "string" && imageUrl ? imageUrl : null,
       createdAt: new Date().toISOString()
     };
     if (!post.title || !post.body) {

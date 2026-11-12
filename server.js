@@ -91,6 +91,16 @@ const server = http.createServer(async (req, res) => {
     return res.end(JSON.stringify({ error: "No function matched " + req.method + " " + url.pathname }));
   }
 
+  // ---- locally stored images (file fallback for Blob Storage) ----
+  if (url.pathname.startsWith("/images/")) {
+    const imgFile = path.join(__dirname, url.pathname);
+    return fs.readFile(imgFile, (err, data) => {
+      if (err) { res.writeHead(404); return res.end("Not found"); }
+      res.writeHead(200, { "Content-Type": "image/" + path.extname(imgFile).slice(1) });
+      res.end(data);
+    });
+  }
+
   // ---- static files ----
   let file = path.join(__dirname, url.pathname === "/" ? "index.html" : url.pathname);
   if (!file.startsWith(__dirname)) { res.writeHead(403); return res.end(); }
