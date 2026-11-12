@@ -3,7 +3,13 @@
 const fs = require("fs");
 const path = require("path");
 
+// Two ways to configure Cosmos, so a long paste can't break the app:
+//   1. COSMOS_CONNECTION  = full connection string
+//   2. COSMOS_ENDPOINT + COSMOS_KEY  (shorter, easier to paste)
 const CONN = process.env.COSMOS_CONNECTION;
+const ENDPOINT = process.env.COSMOS_ENDPOINT;
+const KEY = process.env.COSMOS_KEY;
+const USE_COSMOS = Boolean(CONN || (ENDPOINT && KEY));
 const FILE = path.join(__dirname, "..", "data", "posts.json");
 
 // ---------- local fallback: JSON file ----------
@@ -32,7 +38,9 @@ let containerPromise = null;
 function getContainer() {
   if (!containerPromise) {
     const { CosmosClient } = require("@azure/cosmos");
-    const client = new CosmosClient(CONN);
+    const client = CONN
+      ? new CosmosClient(CONN)
+      : new CosmosClient({ endpoint: ENDPOINT, key: KEY });
     containerPromise = Promise.resolve(client.database("blogdb").container("posts"));
   }
   return containerPromise;
@@ -55,7 +63,7 @@ const cosmosStore = {
   }
 };
 
-const store = CONN ? cosmosStore : fileStore;
+const store = USE_COSMOS ? cosmosStore : fileStore;
 
 module.exports = {
   async list() {
