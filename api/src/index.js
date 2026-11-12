@@ -9,3 +9,5 @@ require("./functions/AdminBanUser");
 require("./functions/AdminUnbanUser");
 require("./functions/WhoAmI");
 require("./functions/UploadImage");
+require("./functions/ProbeAlpha");
+require("./functions/ProbeAdmin");

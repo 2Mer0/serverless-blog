@@ -16,7 +16,7 @@ function requireAdmin(request) {
 app.http("AdminListPosts", {
   methods: ["GET"],
   authLevel: "anonymous",
-  route: "adminposts",
+  route: "modposts",
   handler: async (request, context) => {
     const { error } = requireAdmin(request);
     if (error) return error;

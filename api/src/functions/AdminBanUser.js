@@ -16,7 +16,7 @@ function requireAdmin(request) {
 app.http("AdminBanUser", {
   methods: ["POST"],
   authLevel: "anonymous",
-  route: "adminban",
+  route: "modban",
   handler: async (request, context) => {
     const { principal, error } = requireAdmin(request);
     if (error) return error;

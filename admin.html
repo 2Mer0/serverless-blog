@@ -81,8 +81,8 @@
     async function load() {
       let posts, bans;
       try {
-        posts = await api("/api/adminposts");
-        bans = await api("/api/adminbans");
+        posts = await api("/api/modposts");
+        bans = await api("/api/modbans");
       } catch (e) {
         failure(e.message);
         return;
@@ -138,14 +138,14 @@
           } else if (btn.dataset.ban) {
             const reason = prompt("Reason for blocking " + btn.dataset.name + "?", "");
             if (reason === null) { btn.disabled = false; return; }
-            await api("/api/adminban", {
+            await api("/api/modban", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ userId: btn.dataset.ban, userDetails: btn.dataset.name, reason })
             });
             say(btn.dataset.name + " is now blocked from publishing.");
           } else if (btn.dataset.unban) {
-            await api("/api/adminunban", {
+            await api("/api/modunban", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ userId: btn.dataset.unban })
