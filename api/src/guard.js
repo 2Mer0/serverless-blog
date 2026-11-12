@@ -2,8 +2,16 @@
 // this module decides admin rights and ban status on top of that.
 const ADMIN = (process.env.ADMIN_USER || "").toLowerCase();
 
+// Azure Functions gives a WHATWG Headers object (.get), while the local dev
+// server gives a plain object — support both, or auth silently fails in Azure.
+function headerValue(headers, name) {
+  if (!headers) return undefined;
+  if (typeof headers.get === "function") return headers.get(name) || undefined;
+  return headers[name] !== undefined ? headers[name] : headers[name.toLowerCase()];
+}
+
 function parsePrincipal(request) {
-  const raw = request.headers && request.headers["x-ms-client-principal"];
+  const raw = headerValue(request && request.headers, "x-ms-client-principal");
   if (!raw) return null;
   try {
     return JSON.parse(Buffer.from(raw, "base64").toString("utf8"));

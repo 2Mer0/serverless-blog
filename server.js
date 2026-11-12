@@ -67,7 +67,11 @@ const server = http.createServer(async (req, res) => {
       const request = {
         method: req.method,
         url: req.url,
-        headers: req.headers,
+        // Mimic Azure's WHATWG Headers (has .get) rather than a plain object.
+        headers: {
+          get: n => req.headers[String(n).toLowerCase()],
+          ...req.headers
+        },
         params,
         query: url.searchParams,
         json: async () => JSON.parse(body || "{}"),
