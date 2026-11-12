@@ -50,11 +50,17 @@ const blobStore = {
   }
 };
 
+// In Azure the filesystem is read-only, so the local fallback would "succeed"
+// and then serve a broken link. Fail loudly instead of pretending.
+const IN_AZURE = Boolean(process.env.WEBSITE_INSTANCE_ID);
 const store = CONN ? blobStore : localStore;
 
 module.exports = {
   // returns { url } or throws Error with a user-safe message
   async saveImage({ filename, contentType, data }) {
+    if (IN_AZURE && !CONN) {
+      throw new Error("Image storage is not configured (STORAGE_CONNECTION is missing)");
+    }
     const ext = extFor(contentType);
     if (!ext) throw new Error("Only PNG, JPEG, GIF or WebP images are allowed");
 
