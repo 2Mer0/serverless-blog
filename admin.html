@@ -19,7 +19,7 @@
     button.safe { border-color: #1a7f37; color: #1a7f37; }
     .tag { font-size: 11px; background: #b00020; color: #fff; padding: 1px 6px; border-radius: 2px; }
     .ok { color: #1a7f37; font-size: 13px; }
-    .err { color: #b00020; font-size: 13px; }
+    .err { color: #b00020; }
     a { color: #1558a8; }
     .empty { color: #888; font-style: italic; }
   </style>
@@ -27,7 +27,7 @@
 <body>
   <header>
     <h1>Admin</h1>
-    <a href="/">← back to blog</a>
+    <a href="/">&larr; back to blog</a>
   </header>
 
   <p id="msg"></p>
@@ -38,7 +38,11 @@
     const msg = document.getElementById("msg");
 
     function say(text, cls) {
-      msg.innerHTML = text ? `<span class="${cls || 'ok'}">${text}</span>` : "";
+      msg.innerHTML = text ? `<span class="${cls || 'ok'}">${esc(text)}</span>` : "";
+    }
+
+    function esc(s) {
+      return String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
     }
 
     async function api(path, opts) {
@@ -48,38 +52,45 @@
       } catch (e) {
         throw new Error("Network error reaching " + path);
       }
-      let body = null;
       const text = await res.text();
+      let body = null;
       try { body = text ? JSON.parse(text) : null; } catch {}
       if (!res.ok) {
-        const detail = (body && body.error) || text.slice(0, 120) || res.statusText;
+        const detail = (body && body.error) || text.slice(0, 140) || res.statusText;
         throw new Error(path + " returned " + res.status + " — " + detail);
       }
       return body;
     }
 
-    function esc(s) {
-      return String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    function failure(m) {
+      const code = (String(m).match(/\b(401|403|404|500)\b/) || [])[1];
+      let advice;
+      if (code === "401") advice = "You are not signed in. Use the Sign in link below.";
+      else if (code === "403") advice = "Signed in, but this account is not the admin. Set ADMIN_USER to your handle, then sign in with that account.";
+      else if (code === "404") advice = "That API route was not found. A deployment may still be running — wait a minute and reload.";
+      else if (code === "500") advice = "The function failed on the server. Check that COSMOS_ENDPOINT and COSMOS_KEY are set.";
+      else advice = "Unexpected response from the API.";
+
+      app.innerHTML = `<p class="err"><strong>Could not load the admin data.</strong></p>
+        <p class="err"><code>${esc(m)}</code></p>
+        <p>${esc(advice)}</p>
+        <p><a href="/.auth/login/github?post_login_redirect_uri=/admin">Sign in</a>
+           &middot; <a href="/">back to blog</a></p>`;
     }
 
     async function load() {
       let posts, bans;
       try {
-        posts = await api("/api/admin/posts");
-        bans = await api("/api/admin/bans");
+        posts = await api("/api/adminposts");
+        bans = await api("/api/adminbans");
       } catch (e) {
-        app.innerHTML = `<p class="err">Could not load the admin data.</p>
-          <p class="err"><code>${esc(e.message)}</code></p>
-          <p>If the message says 401 or 403, this account is not the admin.
-             If it says 404, the API deploy may still be running — wait a minute and reload.</p>
-          <p><a href="/.auth/login/github?post_login_redirect_uri=/admin">Sign in</a>
-             &middot; <a href="/">back to blog</a></p>`;
+        failure(e.message);
         return;
       }
 
-      const bannedIds = new Set(bans.map(b => b.bannedUserId));
+      const bannedIds = new Set((bans || []).map(b => b.bannedUserId));
 
-      const postsHtml = posts.length ? posts.map(p => `
+      const postsHtml = (posts && posts.length) ? posts.map(p => `
         <div class="row">
           <h3>${esc(p.title)}</h3>
           <div class="meta">
@@ -97,7 +108,7 @@
           </div>
         </div>`).join("") : `<p class="empty">No posts yet.</p>`;
 
-      const bansHtml = bans.length ? bans.map(b => `
+      const bansHtml = (bans && bans.length) ? bans.map(b => `
         <div class="row">
           <div class="meta">
             <strong>${esc(b.userDetails || "(no name)")}</strong>
@@ -111,9 +122,9 @@
         </div>`).join("") : `<p class="empty">Nobody is blocked.</p>`;
 
       app.innerHTML = `
-        <h2>Posts (${posts.length})</h2>
+        <h2>Posts (${(posts || []).length})</h2>
         ${postsHtml}
-        <h2>Blocked users (${bans.length})</h2>
+        <h2>Blocked users (${(bans || []).length})</h2>
         ${bansHtml}`;
 
       app.onclick = async e => {
@@ -127,14 +138,14 @@
           } else if (btn.dataset.ban) {
             const reason = prompt("Reason for blocking " + btn.dataset.name + "?", "");
             if (reason === null) { btn.disabled = false; return; }
-            await api("/api/admin/ban", {
+            await api("/api/adminban", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ userId: btn.dataset.ban, userDetails: btn.dataset.name, reason })
             });
             say(btn.dataset.name + " is now blocked from publishing.");
           } else if (btn.dataset.unban) {
-            await api("/api/admin/unban", {
+            await api("/api/adminunban", {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ userId: btn.dataset.unban })

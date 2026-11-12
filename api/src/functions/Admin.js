@@ -13,11 +13,15 @@ function requireAdmin(request) {
   return { principal };
 }
 
-// List every post, including author ids, so the admin can see who to ban.
+// Routes are kept flat (no slashes) — managed functions in Static Web Apps
+// did not resolve nested paths reliably, so /api/adminposts instead of
+// /api/admin/posts. Simpler to debug, and nothing else depends on the shape.
+
+// Every post, including author ids, so the admin can see who to ban.
 app.http("AdminListPosts", {
   methods: ["GET"],
   authLevel: "anonymous",
-  route: "admin/posts",
+  route: "adminposts",
   handler: async (request, context) => {
     const { error } = requireAdmin(request);
     if (error) return error;
@@ -25,11 +29,10 @@ app.http("AdminListPosts", {
   }
 });
 
-// List currently banned accounts.
 app.http("AdminListBans", {
   methods: ["GET"],
   authLevel: "anonymous",
-  route: "admin/bans",
+  route: "adminbans",
   handler: async (request, context) => {
     const { error } = requireAdmin(request);
     if (error) return error;
@@ -37,11 +40,11 @@ app.http("AdminListBans", {
   }
 });
 
-// Ban an account: POST { userId, userDetails, reason }
+// Ban: POST { userId, userDetails, reason }
 app.http("AdminBanUser", {
   methods: ["POST"],
   authLevel: "anonymous",
-  route: "admin/ban",
+  route: "adminban",
   handler: async (request, context) => {
     const { principal, error } = requireAdmin(request);
     if (error) return error;
@@ -74,7 +77,7 @@ app.http("AdminBanUser", {
 app.http("AdminUnbanUser", {
   methods: ["POST"],
   authLevel: "anonymous",
-  route: "admin/unban",
+  route: "adminunban",
   handler: async (request, context) => {
     const { error } = requireAdmin(request);
     if (error) return error;
@@ -89,6 +92,6 @@ app.http("AdminUnbanUser", {
       return { status: 400, jsonBody: { error: "userId is required" } };
     }
     const removed = await store.unbanUser(body.userId);
-    return { status: 200, jsonBody: { unbanied: body.userId, found: removed } };
+    return { status: 200, jsonBody: { unblocked: body.userId, found: removed } };
   }
 });

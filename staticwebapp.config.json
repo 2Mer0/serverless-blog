@@ -2,7 +2,31 @@
   "$schema": "https://json.schemastore.org/staticwebapp.config.json",
   "routes": [
     {
-      "route": "/api/admin/*",
+      "route": "/api/adminposts",
+      "allowedRoles": [
+        "authenticated"
+      ]
+    },
+    {
+      "route": "/api/adminbans",
+      "allowedRoles": [
+        "authenticated"
+      ]
+    },
+    {
+      "route": "/api/adminban",
+      "methods": [
+        "POST"
+      ],
+      "allowedRoles": [
+        "authenticated"
+      ]
+    },
+    {
+      "route": "/api/adminunban",
+      "methods": [
+        "POST"
+      ],
       "allowedRoles": [
         "authenticated"
       ]

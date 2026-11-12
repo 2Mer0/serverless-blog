@@ -22,7 +22,9 @@ app.http("WhoAmI", {
         adminUserConfigured: configured.length > 0,
         adminUserCount: configured.length,
         // show only a masked hint, never the raw configured value
-        adminUserHint: configured.map(v => v.slice(0, 2) + "*".repeat(Math.max(0, v.length - 2)))
+        adminUserHint: configured.map(v => v.slice(0, 2) + "*".repeat(Math.max(0, v.length - 2))),
+        routes: ["/api/posts", "/api/posts/{id}", "/api/upload", "/api/whoami",
+                 "/api/adminposts", "/api/adminbans", "/api/adminban", "/api/adminunban"]
       }
     };
   }
