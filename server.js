@@ -1,6 +1,6 @@
 
 // Local dev server. Serves index.html AND the /api routes on one port,
-// exactly like the deployed Static Web App (where /api is internal, no CORS).
+// exactly like the deployed Static Web App (where /api is internal).
 //   node server.js
 // The function files are the real ones Azure runs; this file only stands in
 // for the Functions host so you need no extra installs.
