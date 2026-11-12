@@ -167,9 +167,11 @@
         user = null;
       }
       if (user) {
+        // Ask the server directly who it thinks this user is. This route is
+        // never blocked by a platform role rule, so it always answers.
         try {
-          const probe = await fetch("/api/admin/bans");
-          isAdmin = probe.ok;
+          const me = await (await fetch("/api/whoami")).json();
+          isAdmin = Boolean(me && me.isAdmin);
         } catch {
           isAdmin = false;
         }
