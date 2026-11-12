@@ -4,4 +4,5 @@ require("./functions/GetPostById");
 require("./functions/CreatePost");
 require("./functions/DeletePost");
 require("./functions/Admin");
+require("./functions/WhoAmI");
 require("./functions/UploadImage");

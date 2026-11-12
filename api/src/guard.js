@@ -24,11 +24,24 @@ function isSignedIn(principal) {
   return Boolean(principal && (principal.userRoles || []).includes("authenticated"));
 }
 
-// Admin = the handle configured in ADMIN_USER (e.g. "2Mer0").
+// Admin = the identity configured in ADMIN_USER (e.g. "2Mer0").
+// Accepts a comma-separated list, and matches the handle OR the display name,
+// because identity providers return either one in userDetails.
 // With no ADMIN_USER set, nobody is admin — safer than everyone being admin.
-function isAdmin(principal) {
-  if (!isSignedIn(principal) || !ADMIN) return false;
-  return String(principal.userDetails || "").toLowerCase() === ADMIN;
+function adminList() {
+  return ADMIN.split(",").map(s => s.trim()).filter(Boolean);
 }
 
-module.exports = { parsePrincipal, isSignedIn, isAdmin };
+function isAdmin(principal) {
+  if (!isSignedIn(principal)) return false;
+  const list = adminList();
+  if (!list.length) return false;
+
+  const candidates = [principal.userDetails, principal.userId]
+    .filter(Boolean)
+    .map(v => String(v).trim().toLowerCase());
+
+  return candidates.some(c => list.includes(c));
+}
+
+module.exports = { parsePrincipal, isSignedIn, isAdmin, adminList };
