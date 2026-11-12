@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json.schemastore.org/staticwebapp.config.json",
+  "routes": [
+    {
+      "route": "/api/posts",
+      "methods": [
+        "POST"
+      ],
+      "allowedRoles": [
+        "authenticated"
+      ]
+    },
+    {
+      "route": "/api/upload",
+      "methods": [
+        "POST"
+      ],
+      "allowedRoles": [
+        "authenticated"
+      ]
+    },
+    {
+      "route": "/api/*",
+      "allowedRoles": [
+        "anonymous",
+        "authenticated"
+      ]
+    },
+    {
+      "route": "/*",
+      "allowedRoles": [
+        "anonymous",
+        "authenticated"
+      ]
+    }
+  ],
+  "responseOverrides": {
+    "401": {
+      "statusCode": 401,
+      "rewrite": "/401.json"
+    }
+  },
+  "navigationFallback": {
+    "rewrite": "/index.html",
+    "exclude": [
+      "/images/*",
+      "/api/*"
+    ]
+  }
+}

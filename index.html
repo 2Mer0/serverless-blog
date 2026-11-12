@@ -29,7 +29,7 @@
 <body>
   <header>
     <h1><a href="#/">My Blog</a></h1>
-    <a href="#/new">+ New post</a>
+    <span id="auth"></span>
   </header>
 
   <div id="app">Loading...</div>
@@ -155,16 +155,45 @@
       };
     }
 
+    let user = null;
+
+    async function loadUser() {
+      try {
+        const r = await fetch("/.auth/me");
+        const d = await r.json();
+        user = d && d.clientPrincipal ? d.clientPrincipal : null;
+      } catch {
+        user = null;
+      }
+      const auth = document.getElementById("auth");
+      if (user) {
+        auth.innerHTML = `<a href="#/new">+ New post</a> &nbsp; <a href="/.auth/logout">Sign out</a>`;
+      } else {
+        auth.innerHTML = `<a href="/.auth/login/github?post_login_redirect_uri=/">Sign in to publish</a>`;
+      }
+    }
+
     function router() {
       const h = location.hash || "#/";
       app.innerHTML = "Loading...";
       if (h.indexOf("#/post/") === 0) renderPost(h.slice(7));
-      else if (h === "#/new") renderNew();
+      else if (h === "#/new") {
+        if (!user) {
+          app.innerHTML = `<p>Sign in to publish a post.</p>
+            <p><a href="/.auth/login/github?post_login_redirect_uri=/#/new">Sign in with GitHub</a></p>`;
+        } else {
+          renderNew();
+        }
+      }
       else renderList();
     }
 
     window.addEventListener("hashchange", router);
-    router();
+
+    (async () => {
+      await loadUser();
+      router();
+    })();
   </script>
 </body>
 </html>
