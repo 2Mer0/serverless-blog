@@ -42,10 +42,19 @@
     }
 
     async function api(path, opts) {
-      const res = await fetch(path, opts);
+      let res;
+      try {
+        res = await fetch(path, opts);
+      } catch (e) {
+        throw new Error("Network error reaching " + path);
+      }
       let body = null;
-      try { body = await res.json(); } catch {}
-      if (!res.ok) throw new Error((body && body.error) || ("HTTP " + res.status));
+      const text = await res.text();
+      try { body = text ? JSON.parse(text) : null; } catch {}
+      if (!res.ok) {
+        const detail = (body && body.error) || text.slice(0, 120) || res.statusText;
+        throw new Error(path + " returned " + res.status + " — " + detail);
+      }
       return body;
     }
 
@@ -59,10 +68,12 @@
         posts = await api("/api/admin/posts");
         bans = await api("/api/admin/bans");
       } catch (e) {
-        app.innerHTML = `<p class="err">${esc(e.message)}</p>
-          <p>You are not an admin on this blog. Sign in with the account configured as admin,
-          or ask whoever deployed it to set the <code>ADMIN_USER</code> environment variable.</p>
-          <p><a href="/.auth/login/github?post_login_redirect_uri=/admin">Sign in</a></p>`;
+        app.innerHTML = `<p class="err">Could not load the admin data.</p>
+          <p class="err"><code>${esc(e.message)}</code></p>
+          <p>If the message says 401 or 403, this account is not the admin.
+             If it says 404, the API deploy may still be running — wait a minute and reload.</p>
+          <p><a href="/.auth/login/github?post_login_redirect_uri=/admin">Sign in</a>
+             &middot; <a href="/">back to blog</a></p>`;
         return;
       }
 
