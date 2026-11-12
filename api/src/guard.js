@@ -1,30 +1,6 @@
-// Guards for writing content: who is allowed, and what words are rejected.
-const PROFANITY = [
-  "fuck", "shit", "bitch", "bastard", "asshole", "dickhead", "cunt",
-  "motherfucker", "twat", "wanker", "prick", "slut", "whore", "retard"
-];
-
-// Normalise so simple evasions (F.U.C.K, fffuuuck, f u c k) still match.
-function normalise(text) {
-  return String(text || "")
-    .toLowerCase()
-    .replace(/[^a-z0-9\s]/g, "")   // drop punctuation/spacing tricks
-    .replace(/(.)\1+/g, "$1")      // collapse every repeated letter: fuuuuck -> fuck
-    .replace(/\s+/g, " ");
-}
-
-function findProfanity(text) {
-  const flat = normalise(text).replace(/\s/g, "");
-  return PROFANITY.filter(w => flat.includes(w));
-}
-
-// ALLOWED_AUTHORS="2Mer0,other"  -> only these GitHub/Entra handles may post.
-// Unset -> any signed-in user may post.
-function authorsAllowed(userDetails) {
-  const list = (process.env.ALLOWED_AUTHORS || "").split(",").map(s => s.trim().toLowerCase()).filter(Boolean);
-  if (!list.length) return true;
-  return list.includes(String(userDetails || "").toLowerCase());
-}
+// Who may do what. The platform forbids anonymous writes (staticwebapp.config.json);
+// this module decides admin rights and ban status on top of that.
+const ADMIN = (process.env.ADMIN_USER || "").toLowerCase();
 
 function parsePrincipal(request) {
   const raw = request.headers && request.headers["x-ms-client-principal"];
@@ -36,30 +12,15 @@ function parsePrincipal(request) {
   }
 }
 
-// Returns an error object to send back, or null when the write is allowed.
-function checkWrite(request, fields) {
-  const principal = parsePrincipal(request);
-
-  // The platform blocks unauthenticated POSTs via staticwebapp.config.json.
-  // This is defence in depth, and it also covers direct function invocation.
-  if (process.env.REQUIRE_AUTH === "true") {
-    if (!principal || !(principal.userRoles || []).includes("authenticated")) {
-      return { status: 401, error: "You must be signed in to publish" };
-    }
-    if (!authorsAllowed(principal.userDetails)) {
-      return { status: 403, error: "This account is not allowed to publish here" };
-    }
-  }
-
-  for (const [name, value] of Object.entries(fields)) {
-    if (typeof value !== "string") continue;
-    const hits = findProfanity(value);
-    if (hits.length) {
-      return { status: 400, error: "Blocked: content contains prohibited language" };
-    }
-  }
-
-  return null;
+function isSignedIn(principal) {
+  return Boolean(principal && (principal.userRoles || []).includes("authenticated"));
 }
 
-module.exports = { checkWrite, parsePrincipal, findProfanity, authorsAllowed, normalise };
+// Admin = the handle configured in ADMIN_USER (e.g. "2Mer0").
+// With no ADMIN_USER set, nobody is admin — safer than everyone being admin.
+function isAdmin(principal) {
+  if (!isSignedIn(principal) || !ADMIN) return false;
+  return String(principal.userDetails || "").toLowerCase() === ADMIN;
+}
+
+module.exports = { parsePrincipal, isSignedIn, isAdmin };

@@ -156,6 +156,7 @@
     }
 
     let user = null;
+    let isAdmin = false;
 
     async function loadUser() {
       try {
@@ -165,9 +166,18 @@
       } catch {
         user = null;
       }
+      if (user) {
+        try {
+          const probe = await fetch("/api/admin/bans");
+          isAdmin = probe.ok;
+        } catch {
+          isAdmin = false;
+        }
+      }
       const auth = document.getElementById("auth");
       if (user) {
-        auth.innerHTML = `<a href="#/new">+ New post</a> &nbsp; <a href="/.auth/logout">Sign out</a>`;
+        const adminLink = isAdmin ? ` &nbsp; <a href="/admin">Admin</a>` : "";
+        auth.innerHTML = `<a href="#/new">+ New post</a>${adminLink} &nbsp; <a href="/.auth/logout">Sign out</a>`;
       } else {
         auth.innerHTML = `<a href="/.auth/login/github?post_login_redirect_uri=/">Sign in to publish</a>`;
       }

@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Admin · My Blog</title>
+  <style>
+    body { font-family: Georgia, serif; max-width: 760px; margin: 40px auto; padding: 0 16px; color: #222; line-height: 1.6; }
+    header { border-bottom: 2px solid #222; padding-bottom: 8px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: baseline; }
+    header h1 { margin: 0; font-size: 24px; }
+    h2 { font-size: 18px; margin: 32px 0 12px; border-bottom: 1px solid #ddd; padding-bottom: 6px; }
+    .row { border-bottom: 1px solid #eee; padding: 12px 0; }
+    .row h3 { margin: 0 0 2px; font-size: 17px; }
+    .meta { color: #888; font-size: 12px; }
+    .meta code { background: #f4f4f2; padding: 1px 4px; }
+    .actions { margin-top: 6px; }
+    button { font: inherit; font-size: 13px; padding: 3px 10px; margin-right: 6px; cursor: pointer; border: 1px solid #bbb; background: #fff; }
+    button.danger { border-color: #b00020; color: #b00020; }
+    button.safe { border-color: #1a7f37; color: #1a7f37; }
+    .tag { font-size: 11px; background: #b00020; color: #fff; padding: 1px 6px; border-radius: 2px; }
+    .ok { color: #1a7f37; font-size: 13px; }
+    .err { color: #b00020; font-size: 13px; }
+    a { color: #1558a8; }
+    .empty { color: #888; font-style: italic; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Admin</h1>
+    <a href="/">← back to blog</a>
+  </header>
+
+  <p id="msg"></p>
+  <div id="app">Checking access...</div>
+
+  <script>
+    const app = document.getElementById("app");
+    const msg = document.getElementById("msg");
+
+    function say(text, cls) {
+      msg.innerHTML = text ? `<span class="${cls || 'ok'}">${text}</span>` : "";
+    }
+
+    async function api(path, opts) {
+      const res = await fetch(path, opts);
+      let body = null;
+      try { body = await res.json(); } catch {}
+      if (!res.ok) throw new Error((body && body.error) || ("HTTP " + res.status));
+      return body;
+    }
+
+    function esc(s) {
+      return String(s == null ? "" : s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+    }
+
+    async function load() {
+      let posts, bans;
+      try {
+        posts = await api("/api/admin/posts");
+        bans = await api("/api/admin/bans");
+      } catch (e) {
+        app.innerHTML = `<p class="err">${esc(e.message)}</p>
+          <p>You are not an admin on this blog. Sign in with the account configured as admin,
+          or ask whoever deployed it to set the <code>ADMIN_USER</code> environment variable.</p>
+          <p><a href="/.auth/login/github?post_login_redirect_uri=/admin">Sign in</a></p>`;
+        return;
+      }
+
+      const bannedIds = new Set(bans.map(b => b.bannedUserId));
+
+      const postsHtml = posts.length ? posts.map(p => `
+        <div class="row">
+          <h3>${esc(p.title)}</h3>
+          <div class="meta">
+            by <strong>${esc(p.author)}</strong>
+            ${p.authorId ? `<code>${esc(p.authorId)}</code>` : "<em>(no id)</em>"}
+            &middot; ${esc(String(p.createdAt).slice(0, 10))}
+            ${bannedIds.has(p.authorId) ? '<span class="tag">BANNED</span>' : ""}
+          </div>
+          <div class="meta">${esc(String(p.body).slice(0, 140))}</div>
+          <div class="actions">
+            <button class="danger" data-del="${esc(p.id)}">Delete post</button>
+            ${p.authorId && !bannedIds.has(p.authorId)
+              ? `<button class="danger" data-ban="${esc(p.authorId)}" data-name="${esc(p.author)}">Block this user</button>`
+              : ""}
+          </div>
+        </div>`).join("") : `<p class="empty">No posts yet.</p>`;
+
+      const bansHtml = bans.length ? bans.map(b => `
+        <div class="row">
+          <div class="meta">
+            <strong>${esc(b.userDetails || "(no name)")}</strong>
+            <code>${esc(b.bannedUserId)}</code>
+            &middot; blocked ${esc(String(b.bannedAt).slice(0, 10))} by ${esc(b.bannedBy || "?")}
+          </div>
+          ${b.reason ? `<div class="meta">reason: ${esc(b.reason)}</div>` : ""}
+          <div class="actions">
+            <button class="safe" data-unban="${esc(b.bannedUserId)}">Unblock</button>
+          </div>
+        </div>`).join("") : `<p class="empty">Nobody is blocked.</p>`;
+
+      app.innerHTML = `
+        <h2>Posts (${posts.length})</h2>
+        ${postsHtml}
+        <h2>Blocked users (${bans.length})</h2>
+        ${bansHtml}`;
+
+      app.onclick = async e => {
+        const btn = e.target.closest("button");
+        if (!btn) return;
+        btn.disabled = true;
+        try {
+          if (btn.dataset.del) {
+            await api("/api/posts/" + encodeURIComponent(btn.dataset.del), { method: "DELETE" });
+            say("Post deleted.");
+          } else if (btn.dataset.ban) {
+            const reason = prompt("Reason for blocking " + btn.dataset.name + "?", "");
+            if (reason === null) { btn.disabled = false; return; }
+            await api("/api/admin/ban", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ userId: btn.dataset.ban, userDetails: btn.dataset.name, reason })
+            });
+            say(btn.dataset.name + " is now blocked from publishing.");
+          } else if (btn.dataset.unban) {
+            await api("/api/admin/unban", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ userId: btn.dataset.unban })
+            });
+            say("User unblocked.");
+          }
+          await load();
+        } catch (err) {
+          say(err.message, "err");
+          btn.disabled = false;
+        }
+      };
+    }
+
+    load();
+  </script>
+</body>
+</html>

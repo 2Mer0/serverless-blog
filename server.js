@@ -102,6 +102,14 @@ const server = http.createServer(async (req, res) => {
   }
 
   // ---- static files ----
+  if (url.pathname === "/admin" || url.pathname === "/admin/") {
+    return fs.readFile(path.join(__dirname, "admin.html"), (err, data) => {
+      if (err) { res.writeHead(404); return res.end("admin.html not found"); }
+      res.writeHead(200, { "Content-Type": "text/html; charset=utf-8" });
+      res.end(data);
+    });
+  }
+
   let file = path.join(__dirname, url.pathname === "/" ? "index.html" : url.pathname);
   if (!file.startsWith(__dirname)) { res.writeHead(403); return res.end(); }
 

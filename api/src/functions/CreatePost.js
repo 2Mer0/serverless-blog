@@ -7,6 +7,15 @@ app.http("CreatePost", {
   authLevel: "anonymous",
   route: "posts",
   handler: async (request, context) => {
+    const principal = guard.parsePrincipal(request);
+    if (!guard.isSignedIn(principal)) {
+      return { status: 401, jsonBody: { error: "You must be signed in to publish" } };
+    }
+
+    if (await store.isBanned(principal.userId)) {
+      return { status: 403, jsonBody: { error: "Your account is blocked from publishing on this blog" } };
+    }
+
     let data;
     try {
       data = await request.json();
@@ -14,21 +23,12 @@ app.http("CreatePost", {
       return { status: 400, jsonBody: { error: "Invalid JSON" } };
     }
 
-    const denied = guard.checkWrite(request, {
-      title: data && data.title,
-      body: data && data.body
-    });
-    if (denied) {
-      context.log("blocked write: " + denied.error);
-      return { status: denied.status, jsonBody: { error: denied.error } };
-    }
-
-    const principal = guard.parsePrincipal(request);
     try {
       const post = await store.create({
         title: data.title,
         body: data.body,
-        author: (principal && principal.userDetails) || data.author || "Anonymous",
+        author: principal.userDetails || "Anonymous",
+        authorId: principal.userId,
         imageUrl: data.imageUrl
       });
       return { status: 201, jsonBody: post };
