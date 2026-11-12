@@ -2,63 +2,6 @@
   "$schema": "https://json.schemastore.org/staticwebapp.config.json",
   "routes": [
     {
-      "route": "/api/adminposts",
-      "allowedRoles": [
-        "authenticated"
-      ]
-    },
-    {
-      "route": "/api/adminbans",
-      "allowedRoles": [
-        "authenticated"
-      ]
-    },
-    {
-      "route": "/api/adminban",
-      "methods": [
-        "POST"
-      ],
-      "allowedRoles": [
-        "authenticated"
-      ]
-    },
-    {
-      "route": "/api/adminunban",
-      "methods": [
-        "POST"
-      ],
-      "allowedRoles": [
-        "authenticated"
-      ]
-    },
-    {
-      "route": "/api/posts",
-      "methods": [
-        "POST"
-      ],
-      "allowedRoles": [
-        "authenticated"
-      ]
-    },
-    {
-      "route": "/api/posts/*",
-      "methods": [
-        "DELETE"
-      ],
-      "allowedRoles": [
-        "authenticated"
-      ]
-    },
-    {
-      "route": "/api/upload",
-      "methods": [
-        "POST"
-      ],
-      "allowedRoles": [
-        "authenticated"
-      ]
-    },
-    {
       "route": "/api/*",
       "allowedRoles": [
         "anonymous",
@@ -77,17 +20,13 @@
       ]
     }
   ],
-  "responseOverrides": {
-    "401": {
-      "statusCode": 401,
-      "rewrite": "/401.json"
-    }
-  },
   "navigationFallback": {
     "rewrite": "/index.html",
     "exclude": [
       "/images/*",
-      "/api/*"
+      "/api/*",
+      "/admin",
+      "/admin.html"
     ]
   }
 }
