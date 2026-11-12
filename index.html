@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>My Blog</title>
+  <style>
+    body { font-family: Georgia, serif; max-width: 620px; margin: 40px auto; padding: 0 16px; color: #222; line-height: 1.6; }
+    header { border-bottom: 2px solid #222; padding-bottom: 8px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: baseline; }
+    header h1 { margin: 0; font-size: 28px; }
+    header h1 a { color: #222; text-decoration: none; }
+    header a { font-size: 14px; }
+    h2 { font-size: 18px; margin: 0 0 12px; }
+    article { border-bottom: 1px solid #ddd; padding: 16px 0; }
+    article h3 { margin: 0 0 4px; font-size: 20px; }
+    article h3 a { color: #222; }
+    .meta { color: #888; font-size: 13px; margin-bottom: 8px; }
+    input, textarea, button { width: 100%; box-sizing: border-box; font: inherit; padding: 8px; margin-bottom: 8px; }
+    textarea { min-height: 140px; }
+    form button { background: #222; color: #fff; border: 0; cursor: pointer; }
+    a { color: #1558a8; }
+    .err { color: #b00020; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1><a href="#/">My Blog</a></h1>
+    <a href="#/new">+ New post</a>
+  </header>
+
+  <div id="app">Loading...</div>
+
+  <script>
+    const app = document.getElementById("app");
+
+    function fmt(d) {
+      return new Date(d).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+    }
+
+    async function renderList() {
+      const posts = await (await fetch("/api/posts")).json();
+      if (!posts.length) {
+        app.innerHTML = "<p>No posts yet. <a href='#/new'>Write the first one.</a></p>";
+        return;
+      }
+      app.innerHTML = posts.map(p => `
+        <article>
+          <h3><a href="#/post/${p.id}">${p.title}</a></h3>
+          <div class="meta">${p.author} &middot; ${fmt(p.createdAt)}</div>
+          <p>${p.body.length > 110 ? p.body.slice(0, 110) + "..." : p.body}</p>
+        </article>`).join("");
+    }
+
+    async function renderPost(id) {
+      const res = await fetch("/api/posts/" + id);
+      if (!res.ok) {
+        app.innerHTML = "<p>Post not found.</p><a href='#/'>&larr; Back to all posts</a>";
+        return;
+      }
+      const p = await res.json();
+      app.innerHTML = `
+        <article style="border:0">
+          <h3 style="font-size:24px">${p.title}</h3>
+          <div class="meta">${p.author} &middot; ${fmt(p.createdAt)}</div>
+          <p>${p.body}</p>
+        </article>
+        <a href="#/">&larr; Back to all posts</a>`;
+    }
+
+    function renderNew() {
+      app.innerHTML = `
+        <h2>New post</h2>
+        <form id="form">
+          <input id="title" placeholder="Title" required>
+          <textarea id="body" placeholder="Write something..." required></textarea>
+          <button type="submit">Publish</button>
+        </form>
+        <p class="err" id="err"></p>`;
+
+      document.getElementById("form").onsubmit = async e => {
+        e.preventDefault();
+        const res = await fetch("/api/posts", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title: document.getElementById("title").value,
+            body: document.getElementById("body").value,
+            author: "Amir"
+          })
+        });
+        if (!res.ok) {
+          const e2 = await res.json();
+          document.getElementById("err").textContent = e2.error || "Could not save";
+          return;
+        }
+        location.hash = "#/";
+      };
+    }
+
+    function router() {
+      const h = location.hash || "#/";
+      app.innerHTML = "Loading...";
+      if (h.indexOf("#/post/") === 0) renderPost(h.slice(7));
+      else if (h === "#/new") renderNew();
+      else renderList();
+    }
+
+    window.addEventListener("hashchange", router);
+    router();
+  </script>
+</body>
+</html>
