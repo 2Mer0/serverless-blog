@@ -41,16 +41,16 @@ const $ = (id) => document.getElementById(id);
 
 // A random id per browser. This is what "block this device" blocks.
 function device() {
-  let id = localStorage.getItem("dev");
-  if (!id) localStorage.setItem("dev", id = Date.now().toString(36) + Math.random().toString(36).slice(2));
+  let id = localStorage.getItem("blog-device");
+  if (!id) localStorage.setItem("blog-device", id = Date.now().toString(36) + Math.random().toString(36).slice(2));
   return id;
 }
 
 // The admin password, kept for this tab only.
 const key = {
-  get: () => sessionStorage.getItem("k") || "",
-  set: (v) => sessionStorage.setItem("k", v),
-  clear: () => sessionStorage.removeItem("k")
+  get: () => sessionStorage.getItem("admin-key") || "",
+  set: (v) => sessionStorage.setItem("admin-key", v),
+  clear: () => sessionStorage.removeItem("admin-key")
 };
 
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
