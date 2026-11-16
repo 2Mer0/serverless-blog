@@ -1,7 +1,7 @@
 {
   "name": "blog-api",
   "version": "1.0.0",
-  "main": "src/index.js",
+  "main": "index.js",
   "dependencies": {
     "@azure/functions": "^4.5.0",
     "@azure/cosmos": "^4.2.0",
