@@ -129,12 +129,14 @@ function compose() {
   };
 }
 
-async function admin() {
+async function admin(err = "") {
   if (!key.get()) {
     app.innerHTML = `
       <h2>Admin</h2>
+      <p class="muted">Enter the admin password.</p>
       <form id="f"><input id="pw" type="password" placeholder="Admin password" required>
-      <button type="submit">Sign in</button></form>`;
+      <button type="submit">Sign in</button></form>
+      <p class="err">${esc(err)}</p>`;
     $("f").onsubmit = (e) => {
       e.preventDefault();
       key.set($("pw").value);
@@ -150,7 +152,7 @@ async function admin() {
     bans = m.bans || [];
   } catch (e) {
     key.clear();
-    return (app.innerHTML = `<p class="err">${esc(e.message)}</p><p><a href="#/admin">Retry</a></p>`);
+    return admin(e.message);   // back to the form, with the reason shown
   }
 
   const blocked = new Set(bans.map((b) => b.bannedDevice));
