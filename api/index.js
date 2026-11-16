@@ -7,9 +7,18 @@ const isAdmin = (request) =>
   Boolean(process.env.ADMIN_KEY) &&
   request.headers.get("x-admin-key") === process.env.ADMIN_KEY;
 
-// Azure puts the caller's IP in x-forwarded-for; the first entry is the origin.
-const clientIp = (request) =>
-  (request.headers.get("x-forwarded-for") || "").split(",")[0].trim() || "unknown";
+// Azure puts the caller's address in x-forwarded-for; the first entry is the origin.
+// It can arrive as "203.0.113.9:58771", so strip the port to keep the stored IP clean.
+const clientIp = (request) => {
+  const raw = (request.headers.get("x-forwarded-for") || "").split(",")[0].trim();
+  if (!raw) return "unknown";
+  // IPv4 with port, then IPv6 (which uses brackets when a port is present)
+  const v4 = raw.match(/^(\d{1,3}(?:\.\d{1,3}){3})(?::\d+)?$/);
+  if (v4) return v4[1];
+  const v6 = raw.match(/^\[?([0-9a-fA-F:]+)\]?(?::\d+)?$/);
+  if (v6 && raw.indexOf(":") !== -1) return v6[1];
+  return raw;
+};
 
 const json = (status, body) => ({ status, jsonBody: body });
 
