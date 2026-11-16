@@ -5,33 +5,25 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Blog</title>
 <style>
-  * { box-sizing: border-box; }
   body { font-family: Georgia, serif; color: #222; line-height: 1.6;
          max-width: 640px; margin: 40px auto; padding: 0 16px; }
   header { border-bottom: 2px solid #222; padding-bottom: 8px; margin-bottom: 24px;
            display: flex; justify-content: space-between; align-items: baseline; }
-  header h1 { margin: 0; font-size: 26px; }
-  header h1 a { color: #222; text-decoration: none; }
-  header nav a { font-size: 13px; color: #1558a8; }
-  h2 { font-size: 18px; margin: 0 0 12px; }
+  h1 { margin: 0; font-size: 26px; }
+  h1 a { color: #222; text-decoration: none; }
+  nav a { font-size: 13px; }
   article { border-bottom: 1px solid #ddd; padding: 14px 0; }
-  article h3 { margin: 0 0 4px; font-size: 19px; }
-  article h3 a { color: #222; }
+  h3 { margin: 0 0 4px; font-size: 19px; }
   .meta { color: #888; font-size: 12px; margin-bottom: 6px; }
-  .meta code { background: #f4f2ec; padding: 1px 4px; font-size: 11px; }
-  img.thumb { max-width: 100%; border: 1px solid #ddd; margin: 8px 0; display: block; }
+  img { max-width: 100%; border: 1px solid #ddd; margin: 8px 0; display: block; }
   input, textarea, button { width: 100%; font: inherit; padding: 8px; margin-bottom: 8px; }
   textarea { min-height: 130px; }
   button { background: #222; color: #fff; border: 0; cursor: pointer; }
-  button:disabled { background: #999; }
   button.small { width: auto; padding: 3px 10px; font-size: 12px; }
-  button.danger { background: #b00020; }
+  button.red { background: #b00020; }
   .err { color: #b00020; font-size: 13px; }
-  .ok  { color: #1a7f37; font-size: 13px; }
   .muted { color: #888; font-size: 13px; font-style: italic; }
-  .row { border-bottom: 1px solid #eee; padding: 10px 0; }
-  .row h3 { margin: 0 0 3px; font-size: 16px; }
-  .tag { background: #b00020; color: #fff; font-size: 10px; padding: 1px 5px; }
+  .row { border-bottom: 1px solid #eee; padding: 10px 0; font-size: 14px; }
 </style>
 </head>
 <body>
@@ -41,279 +33,189 @@
   <nav><a href="#/new">+ New post</a> &nbsp; <a href="#/admin">Admin</a></nav>
 </header>
 
-<div id="app">Loading...</div>
+<div id="app"></div>
 
 <script>
-// ─────────── device identity (no login) ───────────
-const DEVICE_KEY = "blog-device-id";
+const app = document.getElementById("app");
+const $ = (id) => document.getElementById(id);
 
-function deviceId() {
-  let id = localStorage.getItem(DEVICE_KEY);
-  if (!id) {
-    id = (crypto.randomUUID ? crypto.randomUUID()
-        : Date.now() + "-" + Math.random().toString(16).slice(2));
-    localStorage.setItem(DEVICE_KEY, id);
-  }
+// A random id per browser. This is what "block this device" blocks.
+function device() {
+  let id = localStorage.getItem("dev");
+  if (!id) localStorage.setItem("dev", id = Date.now().toString(36) + Math.random().toString(36).slice(2));
   return id;
 }
 
-// ─────────── admin key (held for this browser tab only) ───────────
-const keyStore = {
-  get: () => sessionStorage.getItem("admin-key") || "",
-  set: (v) => sessionStorage.setItem("admin-key", v),
-  clear: () => sessionStorage.removeItem("admin-key")
+// The admin password, kept for this tab only.
+const key = {
+  get: () => sessionStorage.getItem("k") || "",
+  set: (v) => sessionStorage.setItem("k", v),
+  clear: () => sessionStorage.removeItem("k")
 };
 
-const app = document.getElementById("app");
+const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const day = (d) => new Date(d).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 
-const esc = (s) => String(s == null ? "" : s).replace(/[&<>"]/g,
-  c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-
-const fmt = (d) => new Date(d).toLocaleDateString("en-US",
-  { month: "long", day: "numeric", year: "numeric" });
-
-async function api(path, opts) {
-  opts = opts || {};
-  const headers = Object.assign({}, opts.headers);
-  if (opts.admin) headers["x-admin-key"] = keyStore.get();
+// One fetch wrapper. `admin: true` adds the password header.
+async function call(url, opts = {}) {
+  const headers = {};
+  if (opts.admin) headers["x-admin-key"] = key.get();
   if (opts.body) headers["Content-Type"] = "application/json";
-
-  const res = await fetch(path, Object.assign({}, opts, { headers }));
-  const text = await res.text();
-  let body = null;
-  try { body = text ? JSON.parse(text) : null; } catch (e) {}
-  if (!res.ok) throw new Error((body && body.error) || "HTTP " + res.status);
+  const res = await fetch(url, { ...opts, headers });
+  const body = await res.json().catch(() => null);
+  if (!res.ok) throw new Error(body?.error || "HTTP " + res.status);
   return body;
 }
 
-// ─────────── list ───────────
-async function listView() {
-  let posts;
-  try { posts = await api("/api/posts"); }
-  catch (e) { app.innerHTML = '<p class="err">' + esc(e.message) + "</p>"; return; }
-
-  if (!posts.length) {
-    app.innerHTML = '<p class="muted">No posts yet. <a href="#/new">Write the first one.</a></p>';
-    return;
-  }
-  app.innerHTML = posts.map(function (p) {
-    return '<article>' +
-      '<h3><a href="#/post/' + esc(p.id) + '">' + esc(p.title) + "</a></h3>" +
-      '<div class="meta">' + fmt(p.createdAt) + "</div>" +
-      (p.imageUrl ? '<img class="thumb" src="' + esc(p.imageUrl) + '" alt="">' : "") +
-      "<p>" + esc(p.body.length > 130 ? p.body.slice(0, 130) + "..." : p.body) + "</p>" +
-      "</article>";
-  }).join("");
+// ── views ──
+async function list() {
+  const posts = await call("/api/posts");
+  if (!posts.length) return (app.innerHTML = '<p class="muted">No posts yet.</p>');
+  app.innerHTML = posts.map((p) => `
+    <article>
+      <h3><a href="#/post/${esc(p.id)}">${esc(p.title)}</a></h3>
+      <div class="meta">${day(p.createdAt)}</div>
+      ${p.imageUrl ? `<img src="${esc(p.imageUrl)}" alt="">` : ""}
+      <p>${esc(p.body.slice(0, 130))}${p.body.length > 130 ? "..." : ""}</p>
+    </article>`).join("");
 }
 
-// ─────────── single post ───────────
-async function postView(id) {
-  let posts;
-  try { posts = await api("/api/posts"); }
-  catch (e) { app.innerHTML = '<p class="err">' + esc(e.message) + "</p>"; return; }
-
-  const p = posts.filter(function (x) { return x.id === id; })[0];
-  if (!p) { app.innerHTML = '<p class="muted">Post not found. <a href="#/">Back</a></p>'; return; }
-
-  app.innerHTML =
-    '<article style="border:0">' +
-      '<h3 style="font-size:24px">' + esc(p.title) + "</h3>" +
-      '<div class="meta">' + fmt(p.createdAt) + "</div>" +
-      (p.imageUrl ? '<img class="thumb" src="' + esc(p.imageUrl) + '" alt="">' : "") +
-      "<p>" + esc(p.body) + "</p>" +
-    "</article>" +
-    '<p><a href="#/">&larr; Back to all posts</a></p>';
+async function one(id) {
+  const p = (await call("/api/posts")).find((x) => x.id === id);
+  app.innerHTML = p
+    ? `<article><h3 style="font-size:24px">${esc(p.title)}</h3>
+         <div class="meta">${day(p.createdAt)}</div>
+         ${p.imageUrl ? `<img src="${esc(p.imageUrl)}" alt="">` : ""}
+         <p>${esc(p.body)}</p></article><p><a href="#/">&larr; Back</a></p>`
+    : '<p class="muted">Not found. <a href="#/">Back</a></p>';
 }
 
-// ─────────── new post ───────────
-function newView() {
-  app.innerHTML =
-    "<h2>New post</h2>" +
-    '<form id="f">' +
-      '<input id="title" placeholder="Title" required maxlength="140">' +
-      '<textarea id="body" placeholder="Write something..." required></textarea>' +
-      '<input id="file" type="file" accept="image/png,image/jpeg,image/gif,image/webp">' +
-      '<div id="preview"></div>' +
-      '<button id="go" type="submit">Publish</button>' +
-    "</form>" +
-    '<p class="msg"></p>';
+function compose() {
+  app.innerHTML = `
+    <h2>New post</h2>
+    <form id="f">
+      <input id="title" placeholder="Title" required maxlength="140">
+      <textarea id="body" placeholder="Write something..." required></textarea>
+      <input id="pic" type="file" accept="image/png,image/jpeg,image/gif,image/webp">
+      <button type="submit">Publish</button>
+    </form>
+    <p class="err" id="e"></p>`;
 
-  const file = document.getElementById("file");
-  file.onchange = function () {
-    const f = file.files[0];
-    document.getElementById("preview").innerHTML = f
-      ? '<img class="thumb" src="' + URL.createObjectURL(f) + '" alt="preview">' : "";
-  };
-
-  document.getElementById("f").onsubmit = async function (e) {
+  $("f").onsubmit = async (e) => {
     e.preventDefault();
-    const msg = document.querySelector(".msg");
-    const go = document.getElementById("go");
-    msg.className = "msg"; msg.textContent = "";
-    go.disabled = true; go.textContent = "Publishing...";
-
+    $("e").textContent = "";
     try {
       let imageUrl = null;
-      const f = file.files[0];
+      const f = $("pic").files[0];
 
       if (f) {
-        const b64 = await new Promise(function (ok, no) {
+        const data = await new Promise((ok) => {
           const r = new FileReader();
-          r.onload = function () { ok(String(r.result).split(",")[1]); };
-          r.onerror = no;
+          r.onload = () => ok(String(r.result).split(",")[1]);
           r.readAsDataURL(f);
         });
-        const up = await api("/api/upload", {
-          method: "POST",
-          body: JSON.stringify({
-            filename: f.name, contentType: f.type, data: b64, deviceId: deviceId()
-          })
-        });
-        imageUrl = up.url;
+        imageUrl = (await call("/api/upload",
+          { method: "POST", body: JSON.stringify({ filename: f.name, contentType: f.type, data, deviceId: device() }) })).url;
       }
 
-      await api("/api/posts", {
+      await call("/api/posts", {
         method: "POST",
-        body: JSON.stringify({
-          title: document.getElementById("title").value,
-          body: document.getElementById("body").value,
-          imageUrl: imageUrl,
-          deviceId: deviceId()
-        })
+        body: JSON.stringify({ title: $("title").value, body: $("body").value, imageUrl, deviceId: device() })
       });
-
       location.hash = "#/";
     } catch (err) {
-      msg.className = "msg err";
-      msg.textContent = err.message;
-      go.disabled = false; go.textContent = "Publish";
+      $("e").textContent = err.message;
     }
   };
 }
 
-// ─────────── admin ───────────
-async function adminView() {
-  if (!keyStore.get()) {
-    app.innerHTML =
-      "<h2>Admin</h2>" +
-      '<p class="muted">Enter the admin password.</p>' +
-      '<form id="login">' +
-        '<input id="key" type="password" placeholder="Admin password" required>' +
-        '<button type="submit">Sign in</button>' +
-      "</form>" +
-      '<p class="err" id="e"></p>';
-
-    document.getElementById("login").onsubmit = function (e) {
+async function admin() {
+  if (!key.get()) {
+    app.innerHTML = `
+      <h2>Admin</h2>
+      <form id="f"><input id="pw" type="password" placeholder="Admin password" required>
+      <button type="submit">Sign in</button></form>`;
+    $("f").onsubmit = (e) => {
       e.preventDefault();
-      keyStore.set(document.getElementById("key").value);
-      adminView();
+      key.set($("pw").value);
+      admin();
     };
     return;
   }
 
-  let posts, mod;
+  let posts, bans;
   try {
-    const both = await Promise.all([
-      api("/api/posts", { admin: true }),
-      api("/api/mod", { admin: true })
-    ]);
-    posts = both[0]; mod = both[1];
+    const [p, m] = await Promise.all([call("/api/posts", { admin: true }), call("/api/mod", { admin: true })]);
+    posts = p;
+    bans = m.bans || [];
   } catch (e) {
-    keyStore.clear();
-    app.innerHTML = '<p class="err">' + esc(e.message) + "</p>" +
-      '<p><a href="#/admin">Try again</a></p>';
-    return;
+    key.clear();
+    return (app.innerHTML = `<p class="err">${esc(e.message)}</p><p><a href="#/admin">Retry</a></p>`);
   }
 
-  const bans = (mod && mod.bans) || [];
-  const blocked = {};
-  bans.forEach(function (b) { blocked[b.bannedDevice] = true; });
+  const blocked = new Set(bans.map((b) => b.bannedDevice));
 
-  const postRows = posts.length ? posts.map(function (p) {
-    return '<div class="row">' +
-      "<h3>" + esc(p.title) + "</h3>" +
-      '<div class="meta"><code>' + esc(String(p.deviceId).slice(0, 12)) + "</code> &middot; " +
-        esc(p.ip) + " &middot; " + fmt(p.createdAt) +
-        (blocked[p.deviceId] ? ' <span class="tag">BLOCKED</span>' : "") + "</div>" +
-      '<div style="margin-top:6px">' +
-        '<button class="small danger" data-del="' + esc(p.id) + '">Delete</button>' +
-        (blocked[p.deviceId] ? "" :
-          ' <button class="small danger" data-block="' + esc(p.deviceId) +
-          '" data-ip="' + esc(p.ip) + '">Block device</button>') +
-      "</div></div>";
-  }).join("") : '<p class="muted">No posts.</p>';
+  app.innerHTML = `
+    <h2>Admin</h2>
+    <p class="err" id="e"></p>
+    <h3>Posts (${posts.length})</h3>
+    ${posts.map((p) => `
+      <div class="row">
+        <strong>${esc(p.title)}</strong><br>
+        <span class="meta">${esc(p.ip)} &middot; ${day(p.createdAt)}${blocked.has(p.deviceId) ? " &middot; BLOCKED" : ""}</span><br>
+        <button class="small red" data-del="${esc(p.id)}">Delete</button>
+        ${blocked.has(p.deviceId) ? "" : `<button class="small red" data-block="${esc(p.deviceId)}" data-ip="${esc(p.ip)}">Block device</button>`}
+      </div>`).join("") || '<p class="muted">No posts.</p>'}
+    <h3>Blocked (${bans.length})</h3>
+    ${bans.map((b) => `
+      <div class="row">
+        <span class="meta">${esc(b.ip)} &middot; ${day(b.bannedAt)} ${b.reason ? "&middot; " + esc(b.reason) : ""}</span><br>
+        <button class="small" data-unblock="${esc(b.bannedDevice)}">Unblock</button>
+      </div>`).join("") || '<p class="muted">Nobody blocked.</p>'}
+    <p><button class="small" id="out">Sign out</button></p>`;
 
-  const banRows = bans.length ? bans.map(function (b) {
-    return '<div class="row">' +
-      '<div class="meta"><code>' + esc(String(b.bannedDevice).slice(0, 12)) + "</code> &middot; " +
-        esc(b.ip) + " &middot; " + fmt(b.bannedAt) +
-        (b.reason ? " &middot; " + esc(b.reason) : "") + "</div>" +
-      '<div style="margin-top:6px">' +
-        '<button class="small" data-unblock="' + esc(b.bannedDevice) + '">Unblock</button>' +
-      "</div></div>";
-  }).join("") : '<p class="muted">Nobody is blocked.</p>';
-
-  app.innerHTML =
-    "<h2>Admin</h2>" +
-    '<p class="ok" id="msg"></p>' +
-    '<h3 style="font-size:15px;margin:18px 0 4px">Posts (' + posts.length + ")</h3>" +
-    postRows +
-    '<h3 style="font-size:15px;margin:26px 0 4px">Blocked devices (' + bans.length + ")</h3>" +
-    banRows +
-    '<p style="margin-top:24px"><button class="small" id="out">Sign out</button></p>';
-
-  document.getElementById("out").onclick = function () {
-    keyStore.clear();
-    adminView();
+  $("out").onclick = () => {
+    key.clear();
+    admin();
   };
 
-  app.onclick = async function (e) {
-    const b = e.target.closest("button");
-    if (!b || !b.dataset) return;
-    if (!b.dataset.del && !b.dataset.block && !b.dataset.unblock) return;
-
-    const msg = document.getElementById("msg");
+  app.onclick = async (e) => {
+    const b = e.target.closest("button[data-del],button[data-block],button[data-unblock]");
+    if (!b) return;
     b.disabled = true;
+    $("e").textContent = "";
     try {
       if (b.dataset.del) {
-        await api("/api/posts/" + encodeURIComponent(b.dataset.del),
-          { method: "DELETE", admin: true });
+        await call("/api/posts/" + encodeURIComponent(b.dataset.del), { method: "DELETE", admin: true });
       } else if (b.dataset.block) {
         const reason = prompt("Reason (optional):", "");
-        if (reason === null) { b.disabled = false; return; }
-        await api("/api/mod", {
-          method: "POST", admin: true,
-          body: JSON.stringify({
-            action: "block", deviceId: b.dataset.block, ip: b.dataset.ip, reason: reason
-          })
-        });
-      } else if (b.dataset.unblock) {
-        await api("/api/mod", {
-          method: "POST", admin: true,
-          body: JSON.stringify({ action: "unblock", deviceId: b.dataset.unblock })
-        });
+        if (reason === null) return (b.disabled = false);
+        await call("/api/mod", { method: "POST", admin: true,
+          body: JSON.stringify({ action: "block", deviceId: b.dataset.block, ip: b.dataset.ip, reason }) });
+      } else {
+        await call("/api/mod", { method: "POST", admin: true,
+          body: JSON.stringify({ action: "unblock", deviceId: b.dataset.unblock }) });
       }
-      adminView();
+      admin();
     } catch (err) {
-      msg.className = "err";
-      msg.textContent = err.message;
+      $("e").textContent = err.message;
       b.disabled = false;
     }
   };
 }
 
-// ─────────── router ───────────
-function router() {
-  const h = location.hash || "#/";
-  app.innerHTML = "Loading...";
-  if (h.indexOf("#/post/") === 0) postView(h.slice(7));
-  else if (h === "#/new") newView();
-  else if (h === "#/admin") adminView();
-  else listView();
-}
+// ── router ──
+const route = () => {
+  const h = location.hash;
+  const view = h.startsWith("#/post/") ? () => one(h.slice(7))
+             : h === "#/new" ? compose
+             : h === "#/admin" ? admin
+             : list;
+  view().catch((e) => (app.innerHTML = `<p class="err">${esc(e.message)}</p>`));
+};
 
-window.addEventListener("hashchange", router);
-router();
+window.addEventListener("hashchange", route);
+route();
 </script>
 </body>
 </html>
