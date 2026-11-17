@@ -209,6 +209,7 @@ async function admin(err = "") {
 }  
 
 // ── router ──
+//عشان يعرف الموقع فين يوديك لاي واجهة
 const route = () => {
   const h = location.hash;
   const view = h.startsWith("#/post/") ? () => one(h.slice(7))
