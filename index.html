@@ -92,7 +92,7 @@ async function one(id) {
     : '<p class="muted">Not found. <a href="#/">Back</a></p>';
 }
 // يعطيك الفورم حق انك تسوي بوست
-function compose() {
+async function compose() {
   app.innerHTML = `
     <h2>New post</h2>
     <form id="f">
