@@ -69,6 +69,7 @@ async function call(url, opts = {}) {
 }
 
 //  views 
+//  يسوي ثابت اسمه بوست ويجرب يشبك عليه من الاي بي اي  ,اذا كان مافي بوستات يرجع انه مافي بوستات, لو في يعرضها
 async function list() {
   const posts = await call("/api/posts");
   if (!posts.length) return (app.innerHTML = '<p class="muted">No posts yet.</p>');
@@ -80,7 +81,7 @@ async function list() {
       <p>${esc(p.body.slice(0, 130))}${p.body.length > 130 ? "..." : ""}</p>
     </article>`).join("");
 }
-
+// عشان يوريك البوست لحاله 
 async function one(id) {
   const p = (await call("/api/posts")).find((x) => x.id === id);
   app.innerHTML = p
@@ -90,7 +91,7 @@ async function one(id) {
          <p>${esc(p.body)}</p></article><p><a href="#/">&larr; Back</a></p>`
     : '<p class="muted">Not found. <a href="#/">Back</a></p>';
 }
-
+// يعطيك الفورم حق انك تسوي بوست
 function compose() {
   app.innerHTML = `
     <h2>New post</h2>
@@ -101,14 +102,14 @@ function compose() {
       <button type="submit">Publish</button>
     </form>
     <p class="err" id="e"></p>`;
-
+//بعد ما تسلم هنا يرسله للسيرفر
   $("f").onsubmit = async (e) => {
     e.preventDefault();
     $("e").textContent = "";
     try {
       let imageUrl = null;
       const f = $("pic").files[0];
-
+// يشيك لو الصورة انحطت بالفورم لو اي يرفعها لرابط عشان بلوب
       if (f) {
         const data = await new Promise((ok) => {
           const r = new FileReader();
