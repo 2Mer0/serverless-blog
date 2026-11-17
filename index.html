@@ -130,7 +130,7 @@ function compose() {
     }
   };
 }
-
+// يشيك لو كان الكي حقك نفس حق الادمن من الداتا بيس لو كان يعطيك صلاحية البان والحذف 
 async function admin(err = "") {
   if (!key.get()) {
     app.innerHTML = `
@@ -156,9 +156,9 @@ async function admin(err = "") {
     key.clear();
     return admin(e.message);   // back to the form, with the reason shown
   }
-
+// يدل الاي بي اي على اسم الجهاز المبلك
   const blocked = new Set(bans.map((b) => b.bannedDevice));
-
+//واجهة الادمن
   app.innerHTML = `
     <h2>Admin</h2>
     <p class="err" id="e"></p>
@@ -179,7 +179,7 @@ async function admin(err = "") {
     <p><button class="small" id="out">Sign out</button></p>`;
 
   $("out").onclick = () => {
-    key.clear();
+    key.clear(); // يشيل الكي من الهيدر
     admin();
   };
 
@@ -206,7 +206,7 @@ async function admin(err = "") {
       b.disabled = false;
     }
   };
-}
+}  
 
 // ── router ──
 const route = () => {
