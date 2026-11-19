@@ -160,7 +160,9 @@ module.exports = {
     return store.addComment({
       id: "cm:" + Date.now() + Math.random().toString(16).slice(2, 6),
       commentOn: String(postId).slice(0, 64),
-      name: String(name || "").trim().slice(0, 60) || "Anonymous",
+      // "" means anonymous. The UI derives "user <deviceId>" from the device id,
+      // so no one can claim a display name they did not choose themselves.
+      name: String(name || "").trim().slice(0, 60),
       body: text,
       deviceId: String(deviceId || "unknown").slice(0, 64),
       ip: String(ip || "unknown").slice(0, 45),
