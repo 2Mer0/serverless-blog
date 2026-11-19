@@ -79,17 +79,22 @@
      Delays are set per-frame with nth-child, never on the group — setting
      animation-delay on `.frames g` would overwrite all four and they would
      flash in unison, which is what made the fire look like it was blinking. */
-  .frames g { opacity: 0; animation: showFrame 3.6s steps(1) infinite; }
-  .frames g:nth-child(1) { animation-delay: 0s;    }
-  .frames g:nth-child(2) { animation-delay: -2.7s; }
-  .frames g:nth-child(3) { animation-delay: -1.8s; }
-  .frames g:nth-child(4) { animation-delay: -0.9s; }
+  /* Delays are expressed as FRACTIONS of the duration, via --dur.
+     Hard-coded seconds only tile correctly for one duration: when the right fire
+     ran 4.1s with delays tuned for 3.6s, the four frames stopped covering the
+     whole cycle and the fire went completely dark for ~0.38s every loop. */
+  .frames g { opacity: 0; --dur: 3.6s;
+              animation: showFrame var(--dur) steps(1) infinite; }
+  .frames g:nth-child(1) { animation-delay: calc(var(--dur) * 0);    }
+  .frames g:nth-child(2) { animation-delay: calc(var(--dur) * -0.75); }
+  .frames g:nth-child(3) { animation-delay: calc(var(--dur) * -0.5);  }
+  .frames g:nth-child(4) { animation-delay: calc(var(--dur) * -0.25); }
   @keyframes showFrame {
-    0%, 24.9% { opacity: 1; }
-    25%, 100% { opacity: 0; }
+    0%, 24.99% { opacity: 1; }
+    25%, 100%  { opacity: 0; }
   }
   /* the right fire runs a little slower, so the pair never sync up */
-  .fire.right .frames g { animation-duration: 4.1s; }
+  .fire.right .frames g { --dur: 4.1s; }
 
   /* A gentle breathing glow, not a strobe. */
   .glow { animation: pulse 4.2s ease-in-out infinite; }
