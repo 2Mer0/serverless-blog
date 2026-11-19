@@ -5,59 +5,167 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Blog</title>
 <style>
-  body { font-family: Georgia, serif; color: #222; line-height: 1.6;
-         max-width: 640px; margin: 40px auto; padding: 0 16px; }
-  header { border-bottom: 2px solid #222; padding-bottom: 8px; margin-bottom: 24px;
+  /* ستايل الموقع وكيف كل زر شكله او الايرورات */
+  :root { --ink:#0d1b2a; --snow:#e8eff6; --ice:#9fc3dd; --flame:#ff9b3d; --err:#ff8f8f; }
+  * { box-sizing: border-box; }
+  html { background: #08131f; }
+  body { font-family: Georgia, serif; color: var(--snow); line-height: 1.6;
+         margin: 0; padding: 0; min-height: 100vh; }
+
+  /* Layers use POSITIVE z-index. A negative one paints behind the root
+     background and becomes invisible — which is exactly what happened before. */
+  .bg  { position: fixed; inset: -26px; z-index: 0; filter: blur(2.6px) saturate(1.06); }
+  .bg svg { width: 100%; height: 100%; display: block; }
+  .veil { position: fixed; inset: 0; z-index: 1; pointer-events: none;
+          background: linear-gradient(180deg, rgba(6,15,25,.62) 0%, rgba(6,15,25,.78) 50%, rgba(6,15,25,.9) 100%); }
+  .fire { position: fixed; bottom: -8px; z-index: 2; width: 176px; pointer-events: none;
+          filter: blur(.6px); }
+  .fire svg { width: 100%; display: block; }
+  .fire.left  { left: -34px; }
+  .fire.right { right: -34px; }
+
+  .wrap { position: relative; z-index: 3; max-width: 640px; margin: 0 auto;
+          padding: 40px 16px 96px; }
+
+  header { border-bottom: 2px solid rgba(232,239,246,.85); padding-bottom: 8px; margin-bottom: 24px;
            display: flex; justify-content: space-between; align-items: baseline; }
   h1 { margin: 0; font-size: 26px; }
-  h1 a { color: #222; text-decoration: none; }
-  nav a { font-size: 13px; }
-  article { border-bottom: 1px solid #ddd; padding: 14px 0; }
-  h3 { margin: 0 0 4px; font-size: 19px; }
-  .meta { color: #888; font-size: 12px; margin-bottom: 6px; }
-  img { max-width: 100%; border: 1px solid #ddd; margin: 8px 0; display: block; }
+  h1 a { color: var(--snow); text-decoration: none; }
+  nav a { font-size: 13px; color: var(--ice); text-decoration: none; }
+  nav a:hover { color: #fff; }
+  h2, h3 { color: var(--snow); }
+  a { color: var(--ice); }
+  article { border-bottom: 1px solid rgba(159,195,221,.32); padding: 14px 0; }
+  article h3 { margin: 0 0 4px; font-size: 19px; }
+  article h3 a { color: var(--snow); text-decoration: none; }
+  article h3 a:hover { color: var(--flame); }
+  article p { color: rgba(232,239,246,.92); }
+  .meta { color: rgba(200,220,235,.6); font-size: 12px; margin-bottom: 6px; }
+  .meta code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 11px;
+               background: rgba(159,195,221,.14); padding: 1px 4px; }
+  img { max-width: 100%; border: 1px solid rgba(159,195,221,.35); margin: 8px 0; display: block; }
   input, textarea, button { width: 100%; font: inherit; padding: 8px; margin-bottom: 8px; }
+  input, textarea { background: rgba(8,19,31,.78); color: var(--snow);
+                    border: 1px solid rgba(159,195,221,.42); }
+  input::placeholder, textarea::placeholder { color: rgba(200,220,235,.45); }
   textarea { min-height: 130px; }
-  button { background: #222; color: #fff; border: 0; cursor: pointer; }
+  button { background: #16334d; color: var(--snow);
+           border: 1px solid rgba(159,195,221,.5); cursor: pointer; }
+  button:hover:not(:disabled) { background: #1d4262; }
   button.small { width: auto; padding: 3px 10px; font-size: 12px; }
-  button.red { background: #b00020; }
-  .err { color: #b00020; font-size: 13px; }
-  .muted { color: #888; font-size: 13px; font-style: italic; }
-  .row { border-bottom: 1px solid #eee; padding: 10px 0; font-size: 14px; }
+  button.red  { background: #5c1a1a; border-color: rgba(255,143,143,.5); }
+  button.fire { background: #4a2410; border-color: rgba(255,155,61,.6); }
+  button:disabled { opacity: .5; cursor: default; }
+  .err { color: var(--err); font-size: 13px; }
+  .muted { color: rgba(200,220,235,.6); font-size: 13px; font-style: italic; }
+  .row { border-bottom: 1px solid rgba(159,195,221,.2); padding: 10px 0; font-size: 14px; }
+  .banner { background: rgba(92,26,26,.55); border: 1px solid rgba(255,143,143,.5);
+            padding: 8px 12px; margin-bottom: 18px; font-size: 13px; color: #ffd9d9; }
+  .banner b { color: #fff; }
+
+  .cmt { border-top: 1px solid rgba(159,195,221,.2); padding: 10px 0; font-size: 14px; }
+  .cmt .who { color: var(--snow); font-weight: 600; font-size: 13px; }
+  .cmt .who.anon { color: rgba(200,220,235,.72); font-weight: 400;
+                   font-family: ui-monospace, Menlo, Consolas, monospace; font-size: 12px; }
+  .cmt .when { color: rgba(200,220,235,.5); font-size: 11px; }
+  .cmt p { margin: 4px 0 0; color: rgba(232,239,246,.9); }
+  .cmt-head { margin-top: 30px; padding-top: 6px; border-top: 2px solid rgba(232,239,246,.5); }
+
+  /* The fire flickers. Steps, not easing — pixel art should hold poses. */
+  .flame { animation: flicker 1.15s steps(4) infinite; transform-origin: 50% 100%; }
+  .fire.right .flame { animation-delay: .41s; animation-duration: 1.31s; }
+  .glow  { animation: pulse 2.6s ease-in-out infinite; }
+  .fire.right .glow { animation-delay: .9s; }
+  @keyframes flicker {
+    0%, 100% { opacity: 1;    }
+    25%      { opacity: .84;  }
+    50%      { opacity: .95;  }
+    75%      { opacity: .78;  }
+  }
+  @keyframes pulse { 0%, 100% { opacity: .74; } 50% { opacity: 1; } }
+  @media (prefers-reduced-motion: reduce) { .flame, .glow { animation: none; } }
 </style>
 </head>
 <body>
 
+<div class="bg" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" class="scene" viewBox="0 0 1440 810" preserveAspectRatio="xMidYMax slice" aria-hidden="true"><defs><linearGradient id="sky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#08131f"/><stop offset="0.55" stop-color="#123049"/><stop offset="1" stop-color="#1d4660"/></linearGradient></defs><rect width="1440" height="810" fill="url(#sky)"/><g fill="#cfe3f2"><rect x="33" y="18" width="3" height="3" opacity="0.20"/><rect x="102" y="111" width="3" height="3" opacity="0.44"/><rect x="171" y="42" width="3" height="3" opacity="0.68"/><rect x="240" y="135" width="3" height="3" opacity="0.32"/><rect x="309" y="66" width="3" height="3" opacity="0.56"/><rect x="378" y="159" width="3" height="3" opacity="0.20"/><rect x="447" y="90" width="3" height="3" opacity="0.44"/><rect x="36" y="21" width="3" height="3" opacity="0.68"/><rect x="105" y="114" width="3" height="3" opacity="0.32"/><rect x="174" y="45" width="3" height="3" opacity="0.56"/><rect x="243" y="138" width="3" height="3" opacity="0.20"/><rect x="312" y="69" width="3" height="3" opacity="0.44"/><rect x="381" y="162" width="3" height="3" opacity="0.68"/><rect x="450" y="93" width="3" height="3" opacity="0.32"/><rect x="39" y="24" width="3" height="3" opacity="0.56"/><rect x="108" y="117" width="3" height="3" opacity="0.20"/><rect x="177" y="48" width="3" height="3" opacity="0.44"/><rect x="246" y="141" width="3" height="3" opacity="0.68"/><rect x="315" y="72" width="3" height="3" opacity="0.32"/><rect x="384" y="165" width="3" height="3" opacity="0.56"/><rect x="453" y="96" width="3" height="3" opacity="0.20"/><rect x="42" y="27" width="3" height="3" opacity="0.44"/><rect x="111" y="120" width="3" height="3" opacity="0.68"/><rect x="180" y="51" width="3" height="3" opacity="0.32"/><rect x="249" y="144" width="3" height="3" opacity="0.56"/><rect x="318" y="75" width="3" height="3" opacity="0.20"/><rect x="387" y="168" width="3" height="3" opacity="0.44"/><rect x="456" y="99" width="3" height="3" opacity="0.68"/><rect x="45" y="30" width="3" height="3" opacity="0.32"/><rect x="114" y="123" width="3" height="3" opacity="0.56"/><rect x="183" y="54" width="3" height="3" opacity="0.20"/><rect x="252" y="147" width="3" height="3" opacity="0.44"/><rect x="321" y="78" width="3" height="3" opacity="0.68"/><rect x="390" y="171" width="3" height="3" opacity="0.32"/></g><polygon points="0,450 3,444 6,435 9,423 12,414 15,420 18,399 21,399 24,396 27,378 30,381 33,369 36,357 39,348 42,348 45,339 48,327 51,324 54,312 57,315 60,303 63,288 66,294 69,288 72,300 75,312 78,303 81,321 84,327 87,327 90,327 93,336 96,336 99,354 102,354 105,348 108,342 111,336 114,339 117,321 120,327 123,315 126,315 129,306 132,294 135,300 138,294 141,282 144,276 147,264 150,273 153,255 156,261 159,243 162,249 165,240 168,234 171,234 174,222 177,228 180,231 183,243 186,243 189,246 192,252 195,258 198,261 201,267 204,267 207,282 210,282 213,294 216,291 219,297 222,303 225,306 228,318 231,300 234,297 237,303 240,291 243,288 246,282 249,276 252,273 255,267 258,258 261,252 264,258 267,255 270,243 273,237 276,234 279,234 282,222 285,225 288,213 291,204 294,198 297,198 300,195 303,183 306,177 309,180 312,180 315,180 318,183 321,189 324,192 327,192 330,201 333,207 336,210 339,222 342,213 345,225 348,225 351,234 354,240 357,243 360,249 363,252 366,258 369,261 372,261 375,270 378,276 381,273 384,276 387,267 390,264 393,261 396,264 399,255 402,252 405,249 408,246 411,243 414,240 417,231 420,234 423,231 426,228 429,225 432,216 435,219 438,222 441,213 444,210 447,207 450,198 453,201 456,198 459,210 462,210 465,219 468,225 471,225 474,228 477,240 480,246 483,240 486,252 489,261 492,261 495,267 498,270 501,276 504,276 507,288 510,294 513,291 516,303 519,303 522,312 525,318 528,324 531,315 534,318 537,321 540,309 543,306 546,303 549,312 552,303 555,306 558,291 561,297 564,300 567,285 570,282 573,285 576,288 579,279 582,279 585,276 588,273 591,276 594,267 597,264 600,255 603,255 606,258 609,255 612,252 615,255 618,258 621,255 624,264 627,261 630,270 633,273 636,276 639,279 642,288 645,279 648,288 651,297 654,294 657,297 660,306 663,297 666,312 669,309 672,306 675,315 678,324 681,321 684,324 687,327 690,330 693,339 696,342 699,336 702,327 705,321 708,324 711,312 714,309 717,303 720,300 723,294 726,297 729,285 732,282 735,270 738,264 741,267 744,261 747,258 750,252 753,255 756,243 759,240 762,234 765,231 768,219 771,222 774,210 777,219 780,225 783,228 786,234 789,237 792,240 795,252 798,255 801,249 804,258 807,264 810,261 813,264 816,276 819,279 822,285 825,288 828,294 831,297 834,294 837,306 840,309 843,315 846,312 849,312 852,306 855,303 858,291 861,291 864,294 867,282 870,276 873,276 876,270 879,261 882,255 885,249 888,252 891,246 894,234 897,222 900,216 903,213 906,219 909,207 912,204 915,198 918,192 921,189 924,201 927,204 930,210 933,219 936,216 939,228 942,225 945,231 948,240 951,240 954,243 957,240 960,252 963,255 966,267 969,270 972,270 975,279 978,276 981,288 984,285 987,297 990,300 993,285 996,291 999,288 1002,291 1005,279 1008,282 1011,279 1014,276 1017,276 1020,279 1023,264 1026,276 1029,261 1032,264 1035,270 1038,267 1041,264 1044,258 1047,249 1050,258 1053,243 1056,249 1059,246 1062,243 1065,237 1068,234 1071,249 1074,249 1077,258 1080,252 1083,255 1086,264 1089,270 1092,279 1095,282 1098,288 1101,291 1104,291 1107,294 1110,297 1113,309 1116,312 1119,312 1122,321 1125,318 1128,330 1131,327 1134,336 1137,336 1140,339 1143,345 1146,348 1149,339 1152,342 1155,339 1158,336 1161,327 1164,330 1167,324 1170,315 1173,318 1176,315 1179,306 1182,309 1185,306 1188,303 1191,300 1194,297 1197,294 1200,291 1203,282 1206,282 1209,279 1212,276 1215,273 1218,270 1221,267 1224,270 1227,267 1230,270 1233,273 1236,279 1239,282 1242,285 1245,282 1248,291 1251,288 1254,297 1257,309 1260,306 1263,309 1266,306 1269,315 1272,318 1275,327 1278,333 1281,330 1284,339 1287,330 1290,333 1293,342 1296,339 1299,345 1302,354 1305,357 1308,354 1311,357 1314,354 1317,351 1320,348 1323,345 1326,342 1329,342 1332,345 1335,342 1338,339 1341,330 1344,327 1347,318 1350,321 1353,312 1356,315 1359,312 1362,303 1365,306 1368,300 1371,297 1374,300 1377,291 1380,300 1383,291 1386,282 1389,294 1392,291 1395,303 1398,303 1401,312 1404,324 1407,324 1410,327 1413,339 1416,339 1419,336 1422,354 1425,354 1428,351 1431,363 1434,369 1437,366 1440,450 0,450" fill="#2b4a66"/><polygon points="126,258 150,222 174,240 198,222 222,258 1440,258 0,258" fill="#dbe7f2" opacity=".85"/><polygon points="258,216 285,174 312,195 339,174 366,216 1440,216 0,216" fill="#dbe7f2" opacity=".85"/><polygon points="408,234 432,198 456,216 480,198 504,234 1440,234 0,234" fill="#dbe7f2" opacity=".85"/><polygon points="726,252 750,216 774,234 798,216 822,252 1440,252 0,252" fill="#dbe7f2" opacity=".85"/><polygon points="864,234 891,192 918,213 945,192 972,234 1440,234 0,234" fill="#dbe7f2" opacity=".85"/><polygon points="30,318 48,288 66,303 84,288 102,318 1440,318 0,318" fill="#dbe7f2" opacity=".85"/><polygon points="0,588 3,582 6,576 9,570 12,567 15,561 18,555 21,558 24,543 27,546 30,540 33,525 36,513 39,507 42,510 45,513 48,498 51,483 54,486 57,483 60,477 63,462 66,465 69,459 72,462 75,447 78,432 81,438 84,441 87,426 90,411 93,423 96,420 99,432 102,426 105,429 108,432 111,447 114,450 117,462 120,456 123,462 126,465 129,468 132,474 135,468 138,480 141,483 144,480 147,492 150,495 153,507 156,492 159,498 162,519 165,504 168,510 171,495 174,489 177,483 180,480 183,483 186,468 189,465 192,459 195,453 198,459 201,444 204,438 207,432 210,429 213,423 216,408 219,405 222,408 225,402 228,387 231,393 234,378 237,390 240,387 243,381 246,366 249,372 252,366 255,351 258,354 261,351 264,327 267,342 270,345 273,351 276,354 279,360 282,372 285,369 288,372 291,369 294,381 297,378 300,390 303,396 306,402 309,405 312,402 315,423 318,420 321,423 324,429 327,441 330,429 333,441 336,447 339,459 342,456 345,450 348,444 351,441 354,444 357,420 360,426 363,420 366,414 369,399 372,402 375,390 378,393 381,387 384,372 387,378 390,372 393,366 396,360 399,348 402,351 405,345 408,342 411,336 414,321 417,324 420,318 423,324 426,309 429,294 432,300 435,294 438,288 441,294 444,306 447,303 450,309 453,321 456,318 459,324 462,330 465,342 468,348 471,345 474,348 477,345 480,360 483,363 486,360 489,375 492,387 495,384 498,390 501,405 504,399 507,405 510,411 513,414 516,420 519,417 522,405 525,414 528,402 531,408 534,396 537,402 540,402 543,390 546,387 549,393 552,393 555,390 558,396 561,384 564,381 567,381 570,378 573,384 576,372 579,372 582,369 585,366 588,363 591,369 594,351 597,366 600,363 603,351 606,354 609,369 612,372 615,369 618,381 621,396 624,390 627,396 630,399 633,414 636,408 639,405 642,417 645,423 648,429 651,432 654,438 657,450 660,456 663,450 666,465 669,450 672,474 675,477 678,465 681,486 684,492 687,486 690,501 693,489 696,486 699,489 702,486 705,483 708,471 711,459 714,474 717,459 720,456 723,453 726,441 729,447 732,441 735,429 738,426 741,423 744,429 747,432 750,429 753,408 756,414 759,411 762,414 765,411 768,399 771,396 774,384 777,390 780,375 783,372 786,378 789,372 792,387 795,390 798,405 801,402 804,405 807,408 810,414 813,420 816,423 819,426 822,432 825,438 828,432 831,438 834,450 837,456 840,459 843,462 846,477 849,474 852,477 855,492 858,495 861,492 864,495 867,498 870,504 873,498 876,495 879,498 882,483 885,486 888,465 891,468 894,462 897,459 900,453 903,447 906,441 909,429 912,441 915,426 918,414 921,426 924,411 927,414 930,402 933,396 936,381 939,387 942,381 945,375 948,369 951,366 954,369 957,363 960,369 963,363 966,366 969,381 972,393 975,390 978,393 981,405 984,402 987,405 990,417 993,414 996,417 999,420 1002,426 1005,429 1008,432 1011,438 1014,441 1017,456 1020,450 1023,453 1026,459 1029,471 1032,465 1035,462 1038,474 1041,477 1044,471 1047,483 1050,486 1053,480 1056,483 1059,507 1062,510 1065,495 1068,507 1071,519 1074,513 1077,516 1080,519 1083,513 1086,534 1089,528 1092,522 1095,534 1098,540 1101,543 1104,546 1107,540 1110,552 1113,555 1116,558 1119,567 1122,558 1125,567 1128,552 1131,561 1134,561 1137,561 1140,561 1143,570 1146,561 1149,564 1152,573 1155,573 1158,564 1161,555 1164,573 1167,555 1170,558 1173,567 1176,567 1179,567 1182,558 1185,567 1188,576 1191,579 1194,579 1197,579 1200,570 1203,570 1206,567 1209,567 1212,567 1215,567 1218,564 1221,564 1224,564 1227,555 1230,552 1233,552 1236,561 1239,570 1242,549 1245,558 1248,558 1251,555 1254,555 1257,546 1260,555 1263,543 1266,561 1269,552 1272,552 1275,549 1278,549 1281,540 1284,540 1287,546 1290,546 1293,555 1296,549 1299,549 1302,549 1305,549 1308,561 1311,552 1314,543 1317,552 1320,555 1323,555 1326,564 1329,546 1332,558 1335,567 1338,567 1341,561 1344,552 1347,561 1350,561 1353,564 1356,564 1359,564 1362,555 1365,567 1368,558 1371,567 1374,576 1377,579 1380,579 1383,561 1386,570 1389,567 1392,567 1395,567 1398,567 1401,558 1404,564 1407,564 1410,573 1413,564 1416,573 1419,552 1422,561 1425,561 1428,561 1431,570 1434,567 1437,558 1440,588 0,588" fill="#1b3348"/><polygon points="204,384 234,336 264,360 294,336 324,384 1440,384 0,384" fill="#dbe7f2" opacity=".85"/><polygon points="372,342 405,288 438,315 471,288 504,342 1440,342 0,342" fill="#dbe7f2" opacity=".85"/><polygon points="732,420 759,378 786,399 813,378 840,420 1440,420 0,420" fill="#dbe7f2" opacity=".85"/><polygon points="894,408 924,360 954,384 984,360 1014,408 1440,408 0,408" fill="#dbe7f2" opacity=".85"/><rect y="588" width="1440" height="222" fill="#0e1f2f"/><rect y="588" width="1440" height="3" fill="#e8f1f8" opacity=".22"/></svg></div>
+<div class="veil"></div>
+<div class="fire left" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" class="fire-svg" viewBox="0 0 320 384" aria-hidden="true"><defs><radialGradient id="fg" cx="50%" cy="58%" r="50%"><stop offset="0" stop-color="#ffb066" stop-opacity=".55"/><stop offset="45%" stop-color="#ff8a2b" stop-opacity=".22"/><stop offset="100%" stop-color="#ff8a2b" stop-opacity="0"/></radialGradient></defs><ellipse cx="160" cy="232" rx="152" ry="160" fill="url(#fg)" class="glow"/><g class="flame"><rect x="160" y="192" width="4" height="4" fill="#fff8d6"/><rect x="160" y="196" width="4" height="4" fill="#fff3bf"/><rect x="156" y="200" width="8" height="4" fill="#ffe98a"/><rect x="156" y="204" width="8" height="4" fill="#ffe066"/><rect x="156" y="208" width="12" height="4" fill="#ffd166"/><rect x="156" y="212" width="8" height="4" fill="#ffe066"/><rect x="156" y="216" width="12" height="4" fill="#ffd166"/><rect x="152" y="220" width="16" height="4" fill="#ffbe4d"/><rect x="156" y="224" width="12" height="4" fill="#ffd166"/><rect x="152" y="228" width="20" height="4" fill="#ffb347"/><rect x="148" y="232" width="24" height="4" fill="#ff9b3d"/><rect x="152" y="236" width="20" height="4" fill="#ffb347"/><rect x="148" y="240" width="28" height="4" fill="#ff9b3d"/><rect x="144" y="244" width="32" height="4" fill="#ff7a18"/><rect x="144" y="248" width="36" height="4" fill="#ff8a2b"/><rect x="144" y="252" width="36" height="4" fill="#ff7a18"/><rect x="144" y="256" width="32" height="4" fill="#f26a12"/><rect x="148" y="260" width="24" height="4" fill="#e04b0b"/><rect x="152" y="264" width="16" height="4" fill="#c33d08"/><rect x="132" y="224" width="4" height="4" fill="#ffe066" opacity=".9"/><rect x="184" y="212" width="4" height="4" fill="#ffb347" opacity=".8"/><rect x="132" y="268" width="20" height="4" fill="#4a2f1b"/><rect x="168" y="268" width="20" height="4" fill="#3a2314"/><rect x="148" y="272" width="24" height="4" fill="#2a1810"/></g></svg></div>
+<div class="fire right" aria-hidden="true"><svg xmlns="http://www.w3.org/2000/svg" class="fire-svg" viewBox="0 0 320 384" aria-hidden="true"><defs><radialGradient id="fg" cx="50%" cy="58%" r="50%"><stop offset="0" stop-color="#ffb066" stop-opacity=".55"/><stop offset="45%" stop-color="#ff8a2b" stop-opacity=".22"/><stop offset="100%" stop-color="#ff8a2b" stop-opacity="0"/></radialGradient></defs><ellipse cx="160" cy="232" rx="152" ry="160" fill="url(#fg)" class="glow"/><g class="flame"><rect x="160" y="192" width="4" height="4" fill="#fff8d6"/><rect x="160" y="196" width="4" height="4" fill="#fff3bf"/><rect x="156" y="200" width="8" height="4" fill="#ffe98a"/><rect x="156" y="204" width="8" height="4" fill="#ffe066"/><rect x="156" y="208" width="12" height="4" fill="#ffd166"/><rect x="156" y="212" width="8" height="4" fill="#ffe066"/><rect x="156" y="216" width="12" height="4" fill="#ffd166"/><rect x="152" y="220" width="16" height="4" fill="#ffbe4d"/><rect x="156" y="224" width="12" height="4" fill="#ffd166"/><rect x="152" y="228" width="20" height="4" fill="#ffb347"/><rect x="148" y="232" width="24" height="4" fill="#ff9b3d"/><rect x="152" y="236" width="20" height="4" fill="#ffb347"/><rect x="148" y="240" width="28" height="4" fill="#ff9b3d"/><rect x="144" y="244" width="32" height="4" fill="#ff7a18"/><rect x="144" y="248" width="36" height="4" fill="#ff8a2b"/><rect x="144" y="252" width="36" height="4" fill="#ff7a18"/><rect x="144" y="256" width="32" height="4" fill="#f26a12"/><rect x="148" y="260" width="24" height="4" fill="#e04b0b"/><rect x="152" y="264" width="16" height="4" fill="#c33d08"/><rect x="132" y="224" width="4" height="4" fill="#ffe066" opacity=".9"/><rect x="184" y="212" width="4" height="4" fill="#ffb347" opacity=".8"/><rect x="132" y="268" width="20" height="4" fill="#4a2f1b"/><rect x="168" y="268" width="20" height="4" fill="#3a2314"/><rect x="148" y="272" width="24" height="4" fill="#2a1810"/></g></svg></div>
+
+<div class="wrap">
 <header>
   <h1><a href="#/">My Blog</a></h1>
   <nav><a href="#/new">+ New post</a> &nbsp; <a href="#/admin">Admin</a></nav>
 </header>
 
 <div id="app"></div>
+</div>
 
 <script>
 const app = document.getElementById("app");
 const $ = (id) => document.getElementById(id);
 
-// لكل جهاز رقم اي دي عشوائي عشان نقدر بعدين  نبلكه بدون لوق ان
+// ── permanent device id ──────────────────────────────────────
+// Stored in TWO places, because each survives a different kind of clearing:
+// localStorage survives tab close; the cookie survives "clear localStorage".
+// On load either one restores the other. Honest limit: "clear all site data"
+// wipes both, and another browser or private mode starts fresh.
+const DEV = "blog-device";
+const COOKIE = "blog-device";
+const TEN_YEARS = 60 * 60 * 24 * 365 * 10;
+
+function readCookie() {
+  const m = document.cookie.match(/(?:^|;\s*)blog-device=([^;]+)/);
+  return m ? decodeURIComponent(m[1]) : null;
+}
+
+function writeCookie(v) {
+  document.cookie = COOKIE + "=" + encodeURIComponent(v) +
+    "; path=/; max-age=" + TEN_YEARS + "; SameSite=Lax";
+}
+
 function device() {
-  let id = localStorage.getItem("blog-device");
-  if (!id) localStorage.setItem("blog-device", id = Date.now().toString(36) + Math.random().toString(36).slice(2));
+  let id = null;
+  try { id = localStorage.getItem(DEV); } catch { }
+  if (!id) id = readCookie();
+
+  if (!id) {
+    id = Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
+  }
+  // keep both copies in sync
+  try { localStorage.setItem(DEV, id); } catch { }
+  writeCookie(id);
   return id;
 }
 
-// عشان الادمن كي يروح مع تقفيلتك للموقع
+const dev = device();                       // fixed for the life of the page
+const devShort = () => dev.slice(0, 6);     // what strangers see
+const anonName = () => "user " + devShort();
 
+// ── chosen name ──────────────────────────────────────────────
+// Optional. If absent, the server stores "" and the UI derives "user <id>",
+// so the display name can never drift away from the device it belongs to.
+const NAME = "blog-name";
+const myName = () => { try { return localStorage.getItem(NAME) || ""; } catch { return ""; } };
+const setName = (v) => { try { localStorage.setItem(NAME, v.slice(0, 60)); } catch { } };
+
+const anonNameOf = (deviceId) => "user " + String(deviceId || "").slice(0, 6);
+
+// The admin password, kept for this tab only.
+// عشان الادمن كي يروح مع تقفيلتك للموقع
 const key = {
   get: () => sessionStorage.getItem("admin-key") || "",
   set: (v) => sessionStorage.setItem("admin-key", v),
   clear: () => sessionStorage.removeItem("admin-key")
 };
+
 // عشان لو صارلك محاولة اختراق الكلام يتغير وما يتنفذ بالداتا بيس XSS
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const day = (d) => new Date(d).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
+const when = (d) => new Date(d).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 
-// يشيك الباسوورد لو صح يوديه الهيدر 
+// يشيك الباسوورد لو صح يوديه الهيدر
 async function call(url, opts = {}) {
   const headers = {};
   if (opts.admin) headers["x-admin-key"] = key.get();
@@ -68,8 +176,7 @@ async function call(url, opts = {}) {
   return body;
 }
 
-//  views 
-//  يسوي ثابت اسمه بوست ويجرب يشبك عليه من الاي بي اي  ,اذا كان مافي بوستات يرجع انه مافي بوستات, لو في يعرضها
+// ── views ──
 async function list() {
   const posts = await call("/api/posts");
   if (!posts.length) return (app.innerHTML = '<p class="muted">No posts yet.</p>');
@@ -81,18 +188,82 @@ async function list() {
       <p>${esc(p.body.slice(0, 130))}${p.body.length > 130 ? "..." : ""}</p>
     </article>`).join("");
 }
-// عشان يوريك البوست لحاله 
+
+// عشان يوريك البوست لحاله
 async function one(id) {
-  const p = (await call("/api/posts")).find((x) => x.id === id);
-  app.innerHTML = p
-    ? `<article><h3 style="font-size:24px">${esc(p.title)}</h3>
-         <div class="meta">${day(p.createdAt)}</div>
-         ${p.imageUrl ? `<img src="${esc(p.imageUrl)}" alt="">` : ""}
-         <p>${esc(p.body)}</p></article><p><a href="#/">&larr; Back</a></p>`
-    : '<p class="muted">Not found. <a href="#/">Back</a></p>';
+  const [posts, cm] = await Promise.all([
+    call("/api/posts"),
+    call("/api/comments/" + encodeURIComponent(id))
+  ]);
+  const p = posts.find((x) => x.id === id);
+  if (!p) return (app.innerHTML = '<p class="muted">Not found. <a href="#/">Back</a></p>');
+
+  const comments = cm.comments || [];
+  const paused = cm.paused;
+  const chosen = myName();
+
+  app.innerHTML = `
+    <article><h3 style="font-size:24px">${esc(p.title)}</h3>
+      <div class="meta">${day(p.createdAt)}</div>
+      ${p.imageUrl ? `<img src="${esc(p.imageUrl)}" alt="">` : ""}
+      <p>${esc(p.body)}</p></article>
+
+    <p><a href="#/">&larr; Back</a></p>
+
+    <div class="cmt-head">
+      <h3>Comments (${comments.length})</h3>
+      ${comments.map((c) => {
+        const named = c.name && c.name.trim();
+        return `<div class="cmt">
+          <span class="who${named ? "" : " anon"}">${esc(named || anonNameOf(c.deviceId))}</span>
+          <span class="when"> &middot; ${when(c.createdAt)}</span>
+          <p>${esc(c.body)}</p>
+        </div>`;
+      }).join("") || '<p class="muted">No comments yet.</p>'}
+    </div>
+
+    ${paused
+      ? '<p class="banner"><b>Posting paused.</b> Comments are closed for now.</p>'
+      : `<form id="cf">
+           <h3>Add a comment</h3>
+           <p class="muted">You are <code>${esc(chosen || anonName())}</code>. Pick a name or leave it blank to stay <code>${esc(anonName())}</code>.</p>
+           <input id="cname" placeholder="Your name (optional)" maxlength="60" value="${esc(chosen)}">
+           <input id="cbody" placeholder="Write a comment..." maxlength="600" required>
+           <button type="submit">Post comment</button>
+           <p class="err" id="ce"></p>
+         </form>`}`;
+
+  const f = $("cf");
+  if (!f) return;
+  f.onsubmit = async (e) => {
+    e.preventDefault();
+    $("ce").textContent = "";
+    try {
+      setName($("cname").value.trim());
+      await call("/api/comments", { method: "POST", body: JSON.stringify({
+        postId: id,
+        name: $("cname").value,
+        body: $("cbody").value,
+        deviceId: dev
+      })});
+      one(id);
+    } catch (err) {
+      $("ce").textContent = err.message;
+    }
+  };
 }
+
 // يعطيك الفورم حق انك تسوي بوست
 async function compose() {
+  const st = await call("/api/modstate");
+  if (st.paused) {
+    app.innerHTML = `<h2>New post</h2>
+      <p class="banner"><b>Posting paused.</b> ${esc(st.reason || "The moderator has paused new posts.")}
+      ${st.since ? " Since " + day(st.since) + "." : ""}</p>
+      <p><a href="#/">&larr; Back to posts</a></p>`;
+    return;
+  }
+
   app.innerHTML = `
     <h2>New post</h2>
     <form id="f">
@@ -102,14 +273,14 @@ async function compose() {
       <button type="submit">Publish</button>
     </form>
     <p class="err" id="e"></p>`;
-//بعد ما تسلم هنا يرسله للسيرفر
+
   $("f").onsubmit = async (e) => {
     e.preventDefault();
     $("e").textContent = "";
     try {
       let imageUrl = null;
       const f = $("pic").files[0];
-// يشيك لو الصورة انحطت بالفورم لو اي يرفعها لرابط عشان بلوب
+
       if (f) {
         const data = await new Promise((ok) => {
           const r = new FileReader();
@@ -117,12 +288,12 @@ async function compose() {
           r.readAsDataURL(f);
         });
         imageUrl = (await call("/api/upload",
-          { method: "POST", body: JSON.stringify({ filename: f.name, contentType: f.type, data, deviceId: device() }) })).url;
+          { method: "POST", body: JSON.stringify({ filename: f.name, contentType: f.type, data, deviceId: dev }) })).url;
       }
 
       await call("/api/posts", {
         method: "POST",
-        body: JSON.stringify({ title: $("title").value, body: $("body").value, imageUrl, deviceId: device() })
+        body: JSON.stringify({ title: $("title").value, body: $("body").value, imageUrl, deviceId: dev })
       });
       location.hash = "#/";
     } catch (err) {
@@ -130,7 +301,8 @@ async function compose() {
     }
   };
 }
-// يشيك لو كان الكي حقك نفس حق الادمن من الداتا بيس لو كان يعطيك صلاحية البان والحذف 
+
+// يشيك لو كان الكي حقك نفس حق الادمن من الداتا بيس لو كان يعطيك صلاحية البان والحذف
 async function admin(err = "") {
   if (!key.get()) {
     app.innerHTML = `
@@ -147,33 +319,55 @@ async function admin(err = "") {
     return;
   }
 
-  let posts, bans;
+  let posts, bans, posting;
   try {
-    const [p, m] = await Promise.all([call("/api/posts", { admin: true }), call("/api/mod", { admin: true })]);
+    const [p, m] = await Promise.all([
+      call("/api/posts", { admin: true }),
+      call("/api/mod", { admin: true })
+    ]);
     posts = p;
     bans = m.bans || [];
+    posting = m.posting || { paused: false };
   } catch (e) {
     key.clear();
     return admin(e.message);   // back to the form, with the reason shown
   }
-// يدل الاي بي اي على اسم الجهاز المبلك
+
+  // يدل الاي بي اي على اسم الجهاز المبلك
   const blocked = new Set(bans.map((b) => b.bannedDevice));
-//واجهة الادمن
+
+  //واجهة الادمن
   app.innerHTML = `
     <h2>Admin</h2>
     <p class="err" id="e"></p>
+
+    <h3>Posting</h3>
+    <div class="row">
+      ${posting.paused
+        ? `<span class="meta">PAUSED${posting.reason ? " &middot; " + esc(posting.reason) : ""}
+             ${posting.since ? " &middot; since " + when(posting.since) : ""}</span><br>
+           <button class="small" data-resume="1">Resume posting</button>`
+        : `<span class="meta">OPEN &mdash; anyone can post</span><br>
+           <button class="small fire" data-pause="1">Pause posting</button>`}
+    </div>
+
     <h3>Posts (${posts.length})</h3>
     ${posts.map((p) => `
       <div class="row">
         <strong>${esc(p.title)}</strong><br>
-        <span class="meta">${esc(p.ip)} &middot; ${day(p.createdAt)}${blocked.has(p.deviceId) ? " &middot; BLOCKED" : ""}</span><br>
+        <span class="meta">${esc(p.ip)} &middot; ${day(p.createdAt)}
+          &middot; <code>${esc(String(p.deviceId || "").slice(0, 6))}</code>
+          ${blocked.has(p.deviceId) ? " &middot; BLOCKED" : ""}</span><br>
         <button class="small red" data-del="${esc(p.id)}">Delete</button>
         ${blocked.has(p.deviceId) ? "" : `<button class="small red" data-block="${esc(p.deviceId)}" data-ip="${esc(p.ip)}">Block device</button>`}
       </div>`).join("") || '<p class="muted">No posts.</p>'}
+
     <h3>Blocked (${bans.length})</h3>
     ${bans.map((b) => `
       <div class="row">
-        <span class="meta">${esc(b.ip)} &middot; ${day(b.bannedAt)} ${b.reason ? "&middot; " + esc(b.reason) : ""}</span><br>
+        <span class="meta"><code>${esc(String(b.bannedDevice || "").slice(0, 6))}</code>
+          &middot; ${esc(b.ip)} &middot; ${day(b.bannedAt)}
+          ${b.reason ? " &middot; " + esc(b.reason) : ""}</span><br>
         <button class="small" data-unblock="${esc(b.bannedDevice)}">Unblock</button>
       </div>`).join("") || '<p class="muted">Nobody blocked.</p>'}
     <p><button class="small" id="out">Sign out</button></p>`;
@@ -184,13 +378,21 @@ async function admin(err = "") {
   };
 
   app.onclick = async (e) => {
-    const b = e.target.closest("button[data-del],button[data-block],button[data-unblock]");
+    const b = e.target.closest("button[data-del],button[data-block],button[data-unblock],button[data-pause],button[data-resume]");
     if (!b) return;
     b.disabled = true;
     $("e").textContent = "";
     try {
       if (b.dataset.del) {
         await call("/api/posts/" + encodeURIComponent(b.dataset.del), { method: "DELETE", admin: true });
+      } else if (b.dataset.pause) {
+        const r = prompt("Reason for pausing (optional):", "");
+        if (r === null) return (b.disabled = false);
+        await call("/api/mod", { method: "POST", admin: true,
+          body: JSON.stringify({ action: "pause", reason: r }) });
+      } else if (b.dataset.resume) {
+        await call("/api/mod", { method: "POST", admin: true,
+          body: JSON.stringify({ action: "resume" }) });
       } else if (b.dataset.block) {
         const reason = prompt("Reason (optional):", "");
         if (reason === null) return (b.disabled = false);
@@ -206,7 +408,7 @@ async function admin(err = "") {
       b.disabled = false;
     }
   };
-}  
+}
 
 // ── router ──
 //عشان يعرف الموقع فين يوديك لاي واجهة

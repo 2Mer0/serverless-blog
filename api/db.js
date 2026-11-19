@@ -30,11 +30,15 @@ function blobContainer() {
   return blobPromise;
 }
 
-// Bans live in the same container as posts, tagged with bannedDevice.
+// One container holds three kinds of document, told apart by which field is present:
+//   posts    → deviceId, no commentOn, no bannedDevice
+//   comments → commentOn
+//   bans     → bannedDevice
+//   settings → a single document with a fixed id, no deviceId
 const store = {
   async allPosts() {
     const { resources } = await (await container())
-      .items.query("SELECT * FROM c WHERE IS_DEFINED(c.deviceId) AND NOT IS_DEFINED(c.bannedDevice) ORDER BY c.createdAt DESC")
+      .items.query("SELECT * FROM c WHERE IS_DEFINED(c.deviceId) AND NOT IS_DEFINED(c.bannedDevice) AND NOT IS_DEFINED(c.commentOn) ORDER BY c.createdAt DESC")
       .fetchAll();
     return resources;
   },
@@ -62,6 +66,37 @@ const store = {
     return resource;
   },
   async deleteBan(id) { return store.deleteItem(id); },
+
+  // ── comments ──
+  async commentsFor(postId) {
+    const { resources } = await (await container())
+      .items.query({
+        query: "SELECT * FROM c WHERE IS_DEFINED(c.commentOn) AND c.commentOn = @p ORDER BY c.createdAt ASC",
+        parameters: [{ name: "@p", value: postId }]
+      })
+      .fetchAll();
+    return resources;
+  },
+  async addComment(doc) {
+    const { resource } = await (await container()).items.create(doc);
+    return resource;
+  },
+
+  // ── the single settings document ──
+  async settingsDoc() {
+    try {
+      const { resource } = await (await container()).item("settings:posting", "settings:posting").read();
+      return resource;
+    } catch (err) {
+      if (err.code === 404) return null;
+      throw err;
+    }
+  },
+  async putSetting(doc) {
+    const { resource } = await (await container()).items.upsert(doc);
+    return resource;
+  },
+
   async saveImage(buffer, name) {
     const c = await blobContainer();
     const blob = c.getBlockBlobClient(name);
@@ -100,7 +135,40 @@ module.exports = {
     return store.addPost(post);
   },
 
-  async deletePost(id) { return store.deleteItem(id); },
+  // Deleting a post removes its comments too, so none are orphaned.
+  async deletePost(id) {
+    const comments = await store.commentsFor(id);
+    for (const c of comments) {
+      try { await store.deleteItem(c.id); } catch { /* already gone */ }
+    }
+    return store.deleteItem(id);
+  },
+
+  // ───── comments ─────
+  // A blocked device's comments are hidden, the same way its posts are.
+  async listComments(postId) {
+    const [comments, bans] = await Promise.all([store.commentsFor(postId), store.allBans()]);
+    if (!bans.length) return comments;
+    const blocked = new Set(bans.map(b => b.bannedDevice));
+    return comments.filter(c => !blocked.has(c.deviceId));
+  },
+
+  async createComment({ postId, name, body, deviceId, ip }) {
+    if (!postId) throw new Error("postId is required");
+    const text = String(body || "").trim().slice(0, 600);
+    if (!text) throw new Error("Comment cannot be empty");
+    return store.addComment({
+      id: "cm:" + Date.now() + Math.random().toString(16).slice(2, 6),
+      commentOn: String(postId).slice(0, 64),
+      name: String(name || "").trim().slice(0, 60) || "Anonymous",
+      body: text,
+      deviceId: String(deviceId || "unknown").slice(0, 64),
+      ip: String(ip || "unknown").slice(0, 45),
+      createdAt: new Date().toISOString()
+    });
+  },
+
+  async deleteComment(id) { return store.deleteItem(id); },
 
   // ───── bans ─────
   async listBans() { return store.allBans(); },
@@ -122,6 +190,32 @@ module.exports = {
     if (!deviceId) return false;
     const bans = await store.allBans();
     return bans.some(b => b.bannedDevice === deviceId);
+  },
+
+  // ───── posting switch ─────
+  // One document, id "settings:posting". Missing means posting is open.
+  async getPosting() {
+    const s = await store.settingsDoc();
+    return {
+      paused: Boolean(s && s.paused),
+      since: (s && s.pausedAt) || null,
+      reason: (s && s.reason) || ""
+    };
+  },
+
+  async setPosting(paused, reason) {
+    return store.putSetting({
+      id: "settings:posting",
+      paused: Boolean(paused),
+      pausedAt: paused ? new Date().toISOString() : null,
+      reason: String(reason || "").slice(0, 160),
+      updatedAt: new Date().toISOString()
+    });
+  },
+
+  async isPaused() {
+    const s = await store.settingsDoc();
+    return Boolean(s && s.paused);
   },
 
   // ───── images ─────
