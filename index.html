@@ -5,19 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Blog</title>
 <style>
-  /* ستايل الموقع وكيف كل زر شكله او الايرورات */
+
   :root { --ink:#0d1b2a; --snow:#e8eff6; --ice:#9fc3dd; --flame:#ff9b3d; --err:#ff8f8f; }
   * { box-sizing: border-box; }
   html { background: #08131f; }
   body { font-family: Georgia, serif; color: var(--snow); line-height: 1.6;
          margin: 0; padding: 0; min-height: 100vh; }
 
-  /* Layers use POSITIVE z-index. A negative one paints behind the root
-     background and becomes invisible — which is exactly what happened before. */
-  /* Crisp, not blurred: the pixel grid is the point. */
   .bg  { position: fixed; inset: 0; z-index: 0; }
   .bg svg { width: 100%; height: 100%; display: block; }
-  /* A flat wash only where text sits, so the middle of the scene stays visible. */
+
   .veil { position: fixed; inset: 0; z-index: 1; pointer-events: none;
           background: radial-gradient(ellipse 78% 62% at 50% 42%,
             rgba(6,15,25,.66) 0%, rgba(6,15,25,.48) 55%, rgba(6,15,25,.06) 100%); }
@@ -58,7 +55,7 @@
   button:hover:not(:disabled) { background: #1d4262; }
   button.small { width: auto; padding: 3px 10px; font-size: 12px; }
   button.red  { background: #5c1a1a; border-color: rgba(255,143,143,.5); }
-  button.fire { background: #4a2410; border-color: rgba(255,155,61,.6); }
+  button.warm { background: #4a2410; border-color: rgba(255,155,61,.6); }
   button:disabled { opacity: .5; cursor: default; }
   .err { color: var(--err); font-size: 13px; }
   .muted { color: rgba(200,220,235,.6); font-size: 13px; font-style: italic; }
@@ -75,14 +72,6 @@
   .cmt p { margin: 4px 0 0; color: rgba(232,239,246,.9); }
   .cmt-head { margin-top: 30px; padding-top: 6px; border-top: 2px solid rgba(232,239,246,.5); }
 
-  /* Frame-by-frame flame. Each frame owns one quarter of the cycle.
-     Delays are set per-frame with nth-child, never on the group — setting
-     animation-delay on `.frames g` would overwrite all four and they would
-     flash in unison, which is what made the fire look like it was blinking. */
-  /* Delays are expressed as FRACTIONS of the duration, via --dur.
-     Hard-coded seconds only tile correctly for one duration: when the right fire
-     ran 4.1s with delays tuned for 3.6s, the four frames stopped covering the
-     whole cycle and the fire went completely dark for ~0.38s every loop. */
   .frames g { opacity: 0; --dur: 3.6s;
               animation: showFrame var(--dur) steps(1) infinite; }
   .frames g:nth-child(1) { animation-delay: calc(var(--dur) * 0);    }
@@ -93,17 +82,13 @@
     0%, 24.99% { opacity: 1; }
     25%, 100%  { opacity: 0; }
   }
-  /* the right fire runs a little slower, so the pair never sync up */
+
   .fire.right .frames g { --dur: 4.1s; }
 
-  /* A gentle breathing glow, not a strobe. */
   .glow { animation: pulse 4.2s ease-in-out infinite; }
   .fire.right .glow { animation-delay: 1.4s; }
   @keyframes pulse { 0%, 100% { opacity: .82; } 50% { opacity: 1; } }
 
-  /* Stars glow and dim on their own schedules. Durations and delays are set
-     inline per star, so no two are in phase — a sky that pulses together reads
-     as a bug rather than a night sky. */
   .stars rect { animation-name: twinkle, drift;
                 animation-iteration-count: infinite, infinite;
                 animation-timing-function: ease-in-out, ease-in-out;
@@ -112,14 +97,12 @@
     0%, 100% { opacity: calc(var(--peak, .4) * .3); }
     50%      { opacity: var(--peak, .4); }
   }
-  /* Drift out and back. `alternate` makes the return trip automatic, so the
-     star always ends where it started — no jump at the loop boundary. */
+
   @keyframes drift {
     from { transform: translate(0, 0); }
     to   { transform: translate(var(--dx, 6px), var(--dy, -4px)); }
   }
 
-  /* Embers: sparse, slow, fading out well before they travel far. */
   .ember { animation-name: rise; animation-timing-function: ease-out;
            animation-iteration-count: infinite; opacity: 0; }
   @keyframes rise {
@@ -136,7 +119,6 @@
     100% { transform: translate(-6px, -76px); opacity: 0;  }
   }
 
-  /* Smoke: grey blocks that climb, widen slightly and dissolve. */
   .puff { animation-name: smokeUp; animation-timing-function: linear;
           animation-iteration-count: infinite; opacity: 0; }
   @keyframes smokeUp {
@@ -176,11 +158,6 @@
 const app = document.getElementById("app");
 const $ = (id) => document.getElementById(id);
 
-// ── permanent device id ──────────────────────────────────────
-// Stored in TWO places, because each survives a different kind of clearing:
-// localStorage survives tab close; the cookie survives "clear localStorage".
-// On load either one restores the other. Honest limit: "clear all site data"
-// wipes both, and another browser or private mode starts fresh.
 const DEV = "blog-device";
 const COOKIE = "blog-device";
 const TEN_YEARS = 60 * 60 * 24 * 365 * 10;
@@ -203,39 +180,32 @@ function device() {
   if (!id) {
     id = Date.now().toString(36) + Math.random().toString(36).slice(2, 10);
   }
-  // keep both copies in sync
+
   try { localStorage.setItem(DEV, id); } catch { }
   writeCookie(id);
   return id;
 }
 
-const dev = device();                       // fixed for the life of the page
-const devShort = () => dev.slice(0, 6);     // what strangers see
+const dev = device();
+const devShort = () => dev.slice(0, 6);
 const anonName = () => "user " + devShort();
 
-// ── chosen name ──────────────────────────────────────────────
-// Optional. If absent, the server stores "" and the UI derives "user <id>",
-// so the display name can never drift away from the device it belongs to.
 const NAME = "blog-name";
 const myName = () => { try { return localStorage.getItem(NAME) || ""; } catch { return ""; } };
 const setName = (v) => { try { localStorage.setItem(NAME, v.slice(0, 60)); } catch { } };
 
 const anonNameOf = (deviceId) => "user " + String(deviceId || "").slice(0, 6);
 
-// The admin password, kept for this tab only.
-// عشان الادمن كي يروح مع تقفيلتك للموقع
 const key = {
   get: () => sessionStorage.getItem("admin-key") || "",
   set: (v) => sessionStorage.setItem("admin-key", v),
   clear: () => sessionStorage.removeItem("admin-key")
 };
 
-// عشان لو صارلك محاولة اختراق الكلام يتغير وما يتنفذ بالداتا بيس XSS
 const esc = (s) => String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 const day = (d) => new Date(d).toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" });
 const when = (d) => new Date(d).toLocaleString("en-US", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
 
-// يشيك الباسوورد لو صح يوديه الهيدر
 async function call(url, opts = {}) {
   const headers = {};
   if (opts.admin) headers["x-admin-key"] = key.get();
@@ -246,7 +216,6 @@ async function call(url, opts = {}) {
   return body;
 }
 
-// ── views ──
 async function list() {
   const posts = await call("/api/posts");
   if (!posts.length) return (app.innerHTML = '<p class="muted">No posts yet.</p>');
@@ -259,7 +228,6 @@ async function list() {
     </article>`).join("");
 }
 
-// عشان يوريك البوست لحاله
 async function one(id) {
   const [posts, cm] = await Promise.all([
     call("/api/posts"),
@@ -323,7 +291,6 @@ async function one(id) {
   };
 }
 
-// يعطيك الفورم حق انك تسوي بوست
 async function compose() {
   const st = await call("/api/modstate");
   if (st.paused) {
@@ -372,7 +339,6 @@ async function compose() {
   };
 }
 
-// يشيك لو كان الكي حقك نفس حق الادمن من الداتا بيس لو كان يعطيك صلاحية البان والحذف
 async function admin(err = "") {
   if (!key.get()) {
     app.innerHTML = `
@@ -400,13 +366,11 @@ async function admin(err = "") {
     posting = m.posting || { paused: false };
   } catch (e) {
     key.clear();
-    return admin(e.message);   // back to the form, with the reason shown
+    return admin(e.message);
   }
 
-  // يدل الاي بي اي على اسم الجهاز المبلك
   const blocked = new Set(bans.map((b) => b.bannedDevice));
 
-  //واجهة الادمن
   app.innerHTML = `
     <h2>Admin</h2>
     <p class="err" id="e"></p>
@@ -418,7 +382,7 @@ async function admin(err = "") {
              ${posting.since ? " &middot; since " + when(posting.since) : ""}</span><br>
            <button class="small" data-resume="1">Resume posting</button>`
         : `<span class="meta">OPEN &mdash; anyone can post</span><br>
-           <button class="small fire" data-pause="1">Pause posting</button>`}
+           <button class="small warm" data-pause="1">Pause posting</button>`}
     </div>
 
     <h3>Posts (${posts.length})</h3>
@@ -443,7 +407,7 @@ async function admin(err = "") {
     <p><button class="small" id="out">Sign out</button></p>`;
 
   $("out").onclick = () => {
-    key.clear(); // يشيل الكي من الهيدر
+    key.clear();
     admin();
   };
 
@@ -480,8 +444,6 @@ async function admin(err = "") {
   };
 }
 
-// ── router ──
-//عشان يعرف الموقع فين يوديك لاي واجهة
 const route = () => {
   const h = location.hash;
   const view = h.startsWith("#/post/") ? () => one(h.slice(7))

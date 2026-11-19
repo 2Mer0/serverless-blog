@@ -1,18 +1,15 @@
-// index.js — every endpoint in one file.
+
 const { app } = require("@azure/functions");
 const db = require("./db");
 
-// ─────────── helpers ───────────
 const isAdmin = (request) =>
   Boolean(process.env.ADMIN_KEY) &&
   request.headers.get("x-admin-key") === process.env.ADMIN_KEY;
 
-// Azure puts the caller's address in x-forwarded-for; the first entry is the origin.
-// It can arrive as "203.0.113.9:58771", so strip the port to keep the stored IP clean.
 const clientIp = (request) => {
   const raw = (request.headers.get("x-forwarded-for") || "").split(",")[0].trim();
   if (!raw) return "unknown";
-  // IPv4 with port, then IPv6 (which uses brackets when a port is present)
+
   const v4 = raw.match(/^(\d{1,3}(?:\.\d{1,3}){3})(?::\d+)?$/);
   if (v4) return v4[1];
   const v6 = raw.match(/^\[?([0-9a-fA-F:]+)\]?(?::\d+)?$/);
@@ -22,19 +19,17 @@ const clientIp = (request) => {
 
 const json = (status, body) => ({ status, jsonBody: body });
 
-// ─────────── GET /api/posts ───────────
 app.http("listPosts", {
   methods: ["GET"],
   authLevel: "anonymous",
   route: "posts",
   handler: async (request) => {
-    // The admin panel needs every post, including blocked ones.
+
     const posts = isAdmin(request) ? await db.listPostsRaw() : await db.listPosts();
     return json(200, posts);
   }
 });
 
-// ─────────── POST /api/posts ───────────
 app.http("createPost", {
   methods: ["POST"],
   authLevel: "anonymous",
@@ -50,7 +45,7 @@ app.http("createPost", {
     if (await db.isBlocked(deviceId)) {
       return json(403, { error: "This device is blocked from posting" });
     }
-    // The pause switch applies to everyone, including the admin.
+
     if (await db.isPaused()) {
       return json(403, { error: "Posting is paused by the moderator" });
     }
@@ -66,7 +61,6 @@ app.http("createPost", {
   }
 });
 
-// ─────────── DELETE /api/posts/{id} ───────────
 app.http("deletePost", {
   methods: ["DELETE"],
   authLevel: "anonymous",
@@ -78,7 +72,6 @@ app.http("deletePost", {
   }
 });
 
-// ─────────── POST /api/upload ───────────
 app.http("uploadImage", {
   methods: ["POST"],
   authLevel: "anonymous",
@@ -91,7 +84,7 @@ app.http("uploadImage", {
     if (deviceId && await db.isBlocked(deviceId)) {
       return json(403, { error: "This device is blocked" });
     }
-    // No orphaned images while posting is paused.
+
     if (await db.isPaused()) {
       return json(403, { error: "Posting is paused by the moderator" });
     }
@@ -103,7 +96,6 @@ app.http("uploadImage", {
   }
 });
 
-// ─────────── GET /api/comments/{postId} ───────────
 app.http("listComments", {
   methods: ["GET"],
   authLevel: "anonymous",
@@ -116,7 +108,6 @@ app.http("listComments", {
   }
 });
 
-// ─────────── POST /api/comments ───────────
 app.http("createComment", {
   methods: ["POST"],
   authLevel: "anonymous",
@@ -142,7 +133,6 @@ app.http("createComment", {
   }
 });
 
-// ─────────── DELETE /api/comments/{id} ───────────
 app.http("deleteComment", {
   methods: ["DELETE"],
   authLevel: "anonymous",
@@ -154,9 +144,6 @@ app.http("deleteComment", {
   }
 });
 
-// ─────────── GET /api/modstate ───────────
-// Public, read-only: lets the compose screen know posting is paused before it
-// offers a form. Only the paused flag and reason are exposed, never bans.
 app.http("modstate", {
   methods: ["GET"],
   authLevel: "anonymous",
@@ -164,11 +151,6 @@ app.http("modstate", {
   handler: async () => json(200, await db.getPosting())
 });
 
-// ─────────── GET / POST /api/mod ───────────
-//   GET  → { bans: [...] , posting: {...} }
-//   POST → { action:"block",   deviceId, ip, reason }
-//        → { action:"unblock", deviceId }
-//        → { action:"pause", reason }   |  { action:"resume" }
 app.http("moderation", {
   methods: ["GET", "POST"],
   authLevel: "anonymous",
@@ -188,7 +170,6 @@ app.http("moderation", {
 
     const action = String((body && body.action) || "");
 
-    // The pause switch needs no deviceId.
     if (action === "pause" || action === "resume") {
       const doc = await db.setPosting(action === "pause", body.reason);
       return json(200, { posting: { paused: doc.paused, since: doc.pausedAt, reason: doc.reason } });

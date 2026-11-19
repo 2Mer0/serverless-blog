@@ -1,9 +1,7 @@
-// db.js — the only file that talks to Cosmos DB and Blob Storage.
+
 const STORAGE_CONN = process.env.STORAGE_CONNECTION;
 const CONTAINER_NAME = process.env.STORAGE_CONTAINER || "images";
 
-// ───────────────────── Cosmos DB ─────────────────────
-// The client is built once and reused across requests.
 let containerPromise = null;
 
 function container() {
@@ -18,7 +16,6 @@ function container() {
   return containerPromise;
 }
 
-// ───────────────────── Blob Storage ─────────────────────
 let blobPromise = null;
 
 function blobContainer() {
@@ -30,11 +27,6 @@ function blobContainer() {
   return blobPromise;
 }
 
-// One container holds three kinds of document, told apart by which field is present:
-//   posts    → deviceId, no commentOn, no bannedDevice
-//   comments → commentOn
-//   bans     → bannedDevice
-//   settings → a single document with a fixed id, no deviceId
 const store = {
   async allPosts() {
     const { resources } = await (await container())
@@ -67,7 +59,6 @@ const store = {
   },
   async deleteBan(id) { return store.deleteItem(id); },
 
-  // ── comments ──
   async commentsFor(postId) {
     const { resources } = await (await container())
       .items.query({
@@ -82,7 +73,6 @@ const store = {
     return resource;
   },
 
-  // ── the single settings document ──
   async settingsDoc() {
     try {
       const { resource } = await (await container()).item("settings:posting", "settings:posting").read();
@@ -108,8 +98,7 @@ const store = {
 };
 
 module.exports = {
-  // ───── posts ─────
-  // Visitors see posts from unblocked devices only.
+
   async listPosts() {
     const posts = await store.allPosts();
     const bans = await store.allBans();
@@ -118,7 +107,6 @@ module.exports = {
     return posts.filter(p => !blocked.has(p.deviceId));
   },
 
-  // The admin panel sees everything, including blocked devices' posts.
   async listPostsRaw() { return store.allPosts(); },
 
   async createPost({ title, body, deviceId, ip, imageUrl }) {
@@ -135,17 +123,14 @@ module.exports = {
     return store.addPost(post);
   },
 
-  // Deleting a post removes its comments too, so none are orphaned.
   async deletePost(id) {
     const comments = await store.commentsFor(id);
     for (const c of comments) {
-      try { await store.deleteItem(c.id); } catch { /* already gone */ }
+      try { await store.deleteItem(c.id); } catch {  }
     }
     return store.deleteItem(id);
   },
 
-  // ───── comments ─────
-  // A blocked device's comments are hidden, the same way its posts are.
   async listComments(postId) {
     const [comments, bans] = await Promise.all([store.commentsFor(postId), store.allBans()]);
     if (!bans.length) return comments;
@@ -160,8 +145,7 @@ module.exports = {
     return store.addComment({
       id: "cm:" + Date.now() + Math.random().toString(16).slice(2, 6),
       commentOn: String(postId).slice(0, 64),
-      // "" means anonymous. The UI derives "user <deviceId>" from the device id,
-      // so no one can claim a display name they did not choose themselves.
+
       name: String(name || "").trim().slice(0, 60),
       body: text,
       deviceId: String(deviceId || "unknown").slice(0, 64),
@@ -172,7 +156,6 @@ module.exports = {
 
   async deleteComment(id) { return store.deleteItem(id); },
 
-  // ───── bans ─────
   async listBans() { return store.allBans(); },
 
   async blockDevice({ deviceId, ip, reason }) {
@@ -194,8 +177,6 @@ module.exports = {
     return bans.some(b => b.bannedDevice === deviceId);
   },
 
-  // ───── posting switch ─────
-  // One document, id "settings:posting". Missing means posting is open.
   async getPosting() {
     const s = await store.settingsDoc();
     return {
@@ -220,7 +201,6 @@ module.exports = {
     return Boolean(s && s.paused);
   },
 
-  // ───── images ─────
   async saveImage({ filename, contentType, data }) {
     const allowed = { "image/png": "png", "image/jpeg": "jpg", "image/gif": "gif", "image/webp": "webp" };
     const ext = allowed[contentType];
